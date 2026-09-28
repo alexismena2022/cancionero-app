@@ -1022,15 +1022,14 @@ function updateCount(v, total){countEl.textContent = v+' de '+total+' canciones'
 searchInput.addEventListener('input', attachSearchFilter);
 
 // ---------- pestañas: Buscar / Herramientas ----------
+function showTab(target, focusSearch){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===target));
+  document.getElementById('tabBuscar').style.display = target==='buscar' ? '' : 'none';
+  document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
+  if(target==='buscar' && focusSearch) searchInput.focus();
+}
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const target = btn.getAttribute('data-tab');
-    document.getElementById('tabBuscar').style.display = target==='buscar' ? '' : 'none';
-    document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
-    if(target==='buscar') searchInput.focus();
-  });
+  btn.addEventListener('click', ()=> showTab(btn.getAttribute('data-tab'), true));
 });
 
 let cart = [];
@@ -1346,16 +1345,27 @@ function openEditForm(id, presetKey){
   }
   const modoLabel = editingIsGuitar ? ' &#127928; (vista guitarra)' : ' &#127925; (vista bajo)';
   document.getElementById('addFormTitle').innerHTML = '&#9998;&#65039; Editando: '+song.title+' &mdash; tono '+key+modoLabel+origNote;
+  showTab('herramientas', false); // el formulario vive en esa pestaña: hay que mostrarla
   addForm.classList.add('open');
   addToggleArrow.innerHTML = '&#9650;';
+  window.scrollTo({top:0, behavior:'smooth'});
   addWrap.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 document.getElementById('cancelSongBtn').addEventListener('click', ()=>{
+  const wasEditing = !!editingId;
   resetForm();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
+  if(wasEditing) showTab('buscar', false);
 });
+
+// Deja cada acorde con el formato que entiende la app: nota en MAYÚSCULA, bemol con B mayúscula
+// y la calidad en minúscula (SIm, MIm7, DO#dim, SIBmaj7). Cualquier otro texto queda como lo escribiste.
+function normalizeChordLine(text){
+  return text.replace(/\b(do|re|mi|fa|sol|la|si)(#|b)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![a-z0-9])/gi,
+    (full, root, acc, qual)=> root.toUpperCase() + (acc ? acc.toUpperCase() : '') + (qual ? qual.toLowerCase() : ''));
+}
 
 function upsertVersion(versionsArr, key, sections){
   const copy = versionsArr.map(v=>({key:v.key, sections:v.sections}));
@@ -1372,7 +1382,7 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
   const sections = [];
   fSections.querySelectorAll('.sec-row').forEach(row=>{
     const label = row.querySelector('.sec-label').value.trim();
-    const chords = row.querySelector('.sec-chords').value.trim().toUpperCase();
+    const chords = normalizeChordLine(row.querySelector('.sec-chords').value.trim());
     const lyric = row.querySelector('.sec-lyric').value.trim();
     if(chords) sections.push([label, chords, lyric || null]);
   });
@@ -1396,11 +1406,13 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
     customSongs.push(newSong);
     saveCustom();
   }
+  const wasEditing = !!editingId;
   resetForm();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
   renderSongList();
   renderCart();
+  if(wasEditing) showTab('buscar', false);
 });
 
 // ---------- exportar / importar backup ----------
