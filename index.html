@@ -366,6 +366,19 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2b2620;color:#f1e3d1;padding:10px 16px;border-radius:20px;font-size:0.85rem;z-index:400;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center;}
 #toast.show{opacity:1;}
 
+/* ---------- Pegar una canción / ayuda cuando no se encuentra ---------- */
+#pasteBox{border:1px dashed var(--border);border-radius:10px;padding:10px;margin-bottom:12px;}
+#pasteBox label{margin-top:0 !important;}
+#pasteText{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--ink);font-size:0.8rem;font-family:'Courier New',monospace;resize:vertical;}
+#pasteConvertBtn{width:100%;margin-top:8px;padding:11px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:bold;font-size:0.9rem;cursor:pointer;}
+#pasteReport{margin-top:8px;font-size:0.8rem;line-height:1.5;}
+#pasteReport .rep-line{padding:3px 0;color:var(--ink);}
+#pasteReport .rep-ok{background:var(--accent-light);border-radius:6px;padding:7px 9px;font-weight:bold;margin-bottom:4px;}
+#pasteReport .rep-warn{color:var(--warn);}
+#emptyHelp{margin-top:12px;}
+.empty-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.empty-actions a.smallbtn{text-decoration:none;display:inline-block;}
+
 @page{ size:20cm 30cm; margin:0; }
 @media print{
   html.dark-theme{
@@ -448,7 +461,16 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
     <div id="tabBuscar" class="tab-panel">
     <h2>Todas las canciones (tildá para agregar)</h2>
     <div id="list"></div>
-    <div id="empty">No se encontró ninguna canción con ese nombre.</div>
+    <div id="empty">No se encontró ninguna canción con ese nombre.
+      <div id="emptyHelp" style="display:none;">
+        <div class="formhint" style="margin:0 0 8px;">¿La tenés en otro lado? Buscala y pegala acá:</div>
+        <div class="empty-actions">
+          <a id="emptyLacuerda" class="smallbtn" target="_blank" rel="noopener">&#128270; La Cuerda</a>
+          <a id="emptyCifra" class="smallbtn" target="_blank" rel="noopener">&#128270; Cifra Club</a>
+          <button type="button" id="emptyPasteBtn" class="smallbtn">&#128203; Pegar la canción</button>
+        </div>
+      </div>
+    </div>
     </div>
 
     <div id="tabListas" class="tab-panel" style="display:none;">
@@ -518,6 +540,14 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
     <div id="addWrap">
       <div id="addToggle"><span id="addFormTitle">&#10133; Agregar canción nueva</span> <span id="addToggleArrow">&#9660;</span></div>
       <div id="addForm">
+        <div id="pasteBox">
+          <label for="pasteText">&#128203; Pegar una canción (opcional)</label>
+          <div class="formhint" style="margin:2px 0 6px;">Copiá la hoja desde La Cuerda, Cifra Club o donde la tengas y pegala acá. La app arma sola el título, el tono, las secciones y los acordes de bajo. Después revisás los campos de abajo y guardás.</div>
+          <textarea id="pasteText" rows="7" placeholder="Pegá acá el texto de la canción…" spellcheck="false" autocomplete="off"></textarea>
+          <button type="button" id="pasteConvertBtn">&#10024; Convertir y completar el formulario</button>
+          <div id="pasteReport"></div>
+          <div class="formhint" style="margin:10px 0 0;text-align:center;">&mdash; o completá a mano &mdash;</div>
+        </div>
         <label>Título</label>
         <input type="text" id="f_title" placeholder="Ej: Digno Eres Tú Señor">
         <label>Tono</label>
@@ -685,8 +715,9 @@ function resolveVersion(song, targetKey){
 // Nunca toca los datos de bajo: solo calcula qué mostrar, aparte.
 function autoGuitarChords(line, songKeyIdx){
   if(!line) return line;
-  return line.replace(/\b(DO|RE|MI|FA|SOL|LA|SI)(#|B)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![A-Za-z])/g, (full, root, acc, qual)=>{
+  return line.replace(/\b(DO|RE|MI|FA|SOL|LA|SI)(#|B)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![A-Za-z])/g, (full, root, acc, qual, offset, str)=>{
     if(qual) return full; // ya venía con calidad explícita (ej "REm", "SOL7"): no tocar
+    if(offset > 0 && str.charAt(offset-1) === '/') return full; // es el bajo de un acorde con barra (SOL/SI): no es otro acorde
     let idx = ROOT_IDX[root];
     if(acc==='#') idx+=1;
     if(acc==='B') idx-=1;
@@ -936,28 +967,64 @@ function connectSupabase(url, key){
     return true;
   }catch(e){ return false; }
 }
+// ---- protección: la app nunca sube a la nube si antes no logró leerla ----
+let cloudReadOk = false;
+const PENDING_KEY = 'cancionero_pending_push_v1';
+function getPending(){ try{ const v = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+function setPending(arr){ try{ localStorage.setItem(PENDING_KEY, JSON.stringify(arr)); }catch(e){} }
+function addPending(k){ const p = getPending(); if(!p.includes(k)){ p.push(k); setPending(p); } }
+function removePending(k){ setPending(getPending().filter(x=>x!==k)); }
+function localValueFor(k){ return k==='customSongs' ? customSongs : (k==='overrides' ? overrides : lists); }
+function localIsEmpty(k){ const v = localValueFor(k); return Array.isArray(v) ? v.length===0 : Object.keys(v || {}).length===0; }
+// si este dispositivo tiene cambios sin subir, se UNEN con los de la nube (lo local gana); si no, manda la nube
+function mergeLocalWithCloud(key, cloudVal){
+  if(!getPending().includes(key)) return cloudVal;
+  if(key==='overrides') return Object.assign({}, (cloudVal && typeof cloudVal==='object' && !Array.isArray(cloudVal)) ? cloudVal : {}, overrides);
+  const byId = new Map();
+  (Array.isArray(cloudVal) ? cloudVal : []).forEach(x=>{ if(x && x.id) byId.set(x.id, x); });
+  localValueFor(key).forEach(x=>{ if(x && x.id) byId.set(x.id, x); });
+  return Array.from(byId.values());
+}
 async function cloudPull(){
   if(!supabaseClient) return false;
   try{
     const { data, error } = await supabaseClient.from('cancionero_kv').select('key,value');
     if(error) throw error;
     const map = {};
-    (data||[]).forEach(r=> map[r.key]=r.value);
-    if(map.customSongs){ customSongs = map.customSongs; customSongs.forEach(s=>s.custom=true); }
-    if(map.overrides){ overrides = map.overrides; }
-    if(Array.isArray(map.lists)){ lists = map.lists; }
+    (data || []).forEach(r=> map[r.key] = r.value);
+    const toPush = [];
+    ['customSongs','overrides','lists'].forEach(k=>{
+      const cloudHas = (k==='overrides') ? (!!map[k] && typeof map[k]==='object' && !Array.isArray(map[k])) : Array.isArray(map[k]);
+      const needPush = getPending().includes(k) || (!cloudHas && !localIsEmpty(k));
+      if(cloudHas){
+        const merged = mergeLocalWithCloud(k, map[k]);
+        if(k==='customSongs') customSongs = merged;
+        else if(k==='overrides') overrides = merged;
+        else lists = merged;
+      }
+      if(needPush) toPush.push(k);
+    });
+    customSongs.forEach(s=>s.custom = true);
     try{ localStorage.setItem(LS_KEY, JSON.stringify(customSongs)); }catch(e){}
     try{ localStorage.setItem(OV_KEY, JSON.stringify(overrides)); }catch(e){}
     try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
-    if(!Array.isArray(map.lists) && lists.length) cloudPush('lists', lists);
+    cloudReadOk = true;
+    for(const k of toPush){ await cloudPush(k, localValueFor(k)); }
     return true;
   }catch(e){ console.warn('cloudPull error', e); return false; }
 }
 async function cloudPush(key, value){
-  if(!supabaseClient) return;
+  if(!supabaseClient || !cloudReadOk){
+    addPending(key);
+    if(typeof toast === 'function') toast('Guardado solo en este dispositivo: todavía no hay conexión con la nube. Se sube solo cuando se pueda.');
+    return false;
+  }
   try{
-    await supabaseClient.from('cancionero_kv').upsert({key, value, updated_at: new Date().toISOString()});
-  }catch(e){ console.warn('cloudPush error', e); }
+    const res = await supabaseClient.from('cancionero_kv').upsert({key, value, updated_at: new Date().toISOString()});
+    if(res && res.error) throw res.error;
+    removePending(key);
+    return true;
+  }catch(e){ addPending(key); console.warn('cloudPush error', e); return false; }
 }
 
 // ---------- canciones agregadas por el usuario (localStorage) ----------
@@ -1003,6 +1070,13 @@ function saveLists(){
   catch(e){ alert('No se pudo guardar la lista en este navegador: '+e.message); }
   cloudPush('lists', lists);
 }
+
+// primera vez con esta versión: lo que haya en este dispositivo se considera "sin subir",
+// así se UNE con la nube en vez de ser pisado por ella
+if(localStorage.getItem(PENDING_KEY) === null){
+  setPending(['customSongs','overrides','lists'].filter(k=>!localIsEmpty(k)));
+}
+
 
 
 function allSongs(){
@@ -1067,6 +1141,7 @@ function attachSearchFilter(){
   });
   updateCount(v, songEls.length);
   emptyEl.style.display = v===0 ? 'block':'none';
+  updateEmptyHelp(v===0 && searchInput.value.trim()!=='');
 }
 
 const searchInput = document.getElementById('search');
@@ -1349,11 +1424,14 @@ function addSectionRow(label,chords,lyric){
   const row = document.createElement('div');
   row.className='sec-row';
   row.innerHTML = `
-    <input type="text" class="sec-label" placeholder="Etiqueta (Intro, Coro...)" value="${label||''}">
-    <input type="text" class="sec-chords" placeholder="Acordes: RE LA MIm SOL" value="${chords||''}">
-    <input type="text" class="sec-lyric" placeholder="Letra (opcional)" value="${lyric||''}">
+    <input type="text" class="sec-label" placeholder="Etiqueta (Intro, Coro...)">
+    <input type="text" class="sec-chords" placeholder="Acordes: RE LA MIm SOL">
+    <input type="text" class="sec-lyric" placeholder="Letra (opcional)">
     <button type="button" class="sec-del">&times;</button>
   `;
+  row.querySelector('.sec-label').value = label || '';
+  row.querySelector('.sec-chords').value = chords || '';
+  row.querySelector('.sec-lyric').value = lyric || '';
   fSections.appendChild(row);
 }
 addSectionRow();
@@ -1412,6 +1490,7 @@ function openEditForm(id, presetKey){
 document.getElementById('cancelSongBtn').addEventListener('click', ()=>{
   const wasEditing = !!editingId;
   resetForm();
+  clearPasteArea();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
   if(wasEditing) showTab('buscar', false);
@@ -1458,6 +1537,8 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
       saveOverrides();
     }
   } else {
+    const dup = allSongs().find(s=>s.title.trim().toLowerCase()===title.toLowerCase());
+    if(dup && !confirm('Ya existe una canción llamada "'+dup.title+'". ¿La guardo igual como otra canción?')) return;
     const id = 'c'+Date.now()+Math.floor(Math.random()*1000);
     const newSong = {id, title, file:[], custom:true, versions:[{key, sections}], guitarVersions:[]};
     customSongs.push(newSong);
@@ -1465,6 +1546,7 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
   }
   const wasEditing = !!editingId;
   resetForm();
+  clearPasteArea();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
   renderSongList();
@@ -1769,7 +1851,7 @@ cloudToggle.addEventListener('click', ()=>{
   cloudToggleArrow.innerHTML = cloudForm.classList.contains('open') ? '&#9650;' : '&#9660;';
 });
 function setCloudStatus(text, cls){
-  cloudStatus.textContent = text;
+  cloudStatus.innerHTML = text;
   cloudStatus.className = cls || '';
 }
 document.getElementById('connectSupaBtn').addEventListener('click', async ()=>{
@@ -2154,18 +2236,489 @@ document.getElementById('gotoSaveListBtn').addEventListener('click', ()=>{
 // al entrar a la pestaña Listas, traemos la versión más nueva de la nube (si hay conexión)
 async function refreshListsFromCloud(){
   if(!supabaseClient) return;
+  if(!cloudReadOk){
+    const ok = await cloudPull();            // todavía no habíamos podido leer la nube: lo intentamos completo
+    if(ok){ renderSongList(); renderLists(); }
+    return;
+  }
   try{
     const { data, error } = await supabaseClient.from('cancionero_kv').select('key,value').eq('key','lists');
     if(error) throw error;
     const row = (data||[]).find(r=>r.key==='lists');
     if(row && Array.isArray(row.value)){
-      lists = row.value;
+      lists = mergeLocalWithCloud('lists', row.value);
       try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
+      if(getPending().includes('lists')) await cloudPush('lists', lists);
       renderLists();
     }
   }catch(e){ console.warn('No se pudieron traer las listas de la nube', e); }
 }
 renderLists();
+
+// ---------- convertidor de hojas pegadas (La Cuerda, Cifra Club, etc.) ----------
+// Toma el texto copiado de una hoja de acordes y arma: título, tono y secciones
+// (con acordes de bajo = solo la nota, y una pista corta de letra por sección).
+const IMP_NAMES = ['DO','DO#','RE','RE#','MI','FA','FA#','SOL','SOL#','LA','LA#','SI'];
+const IMP_EN_TO_LAT = {C:'DO',D:'RE',E:'MI',F:'FA',G:'SOL',A:'LA',B:'SI'};
+const IMP_LAT_IDX = {DO:0,RE:2,MI:4,FA:5,SOL:7,LA:9,SI:11};
+const IMP_LABEL_RE = /^(intro(?:ducci[oó]n)?|verso|estrofa|pre[\s-]?coro|precoro|coro|estribillo|puente|bridge|final|outro|interludio|instrumental|solo|refr[aã]o|pr[eé][\s-]?refr[aã]o|primeira parte|segunda parte|terceira parte|parte|verse|chorus|pre[\s-]?chorus|ponte|tag|vamp|turnaround|interlude|ending|coda)(?![a-zA-ZáéíóúñÁÉÍÓÚÑ])/i;
+
+// ----- calidad del acorde (lo que viene después de la nota) -----
+function impParseTail(t){
+  const f = {minor:false, maj:false, dim:false, sus:null, seventh:false, eleventh:false};
+  let s = t, guard = 0, m;
+  while(s.length && guard++ < 14){
+    if((m = s.match(/^7M(?![a-z])/))){ f.maj = true; s = s.slice(2); continue; }
+    if((m = s.match(/^(maj|Maj|MAJ|Δ|M(?=\d))/))){ f.maj = true; s = s.slice(m[0].length); const d = s.match(/^\d{1,2}/); if(d) s = s.slice(d[0].length); continue; }
+    if((m = s.match(/^(dim|°)/))){ f.dim = true; s = s.slice(m[0].length); const d = s.match(/^\d{1,2}/); if(d) s = s.slice(d[0].length); continue; }
+    if((m = s.match(/^ø/))){ f.minor = true; f.seventh = true; s = s.slice(1); continue; }
+    if((m = s.match(/^(aug|\+)/))){ s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^sus(\d)?/))){ f.sus = m[1] || '4'; s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^add\d{1,2}/))){ s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^(min|mi(?![a-z])|m|M|-(?=\d|$))/))){ f.minor = true; s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^\d{1,2}/))){ const n = parseInt(m[0],10); if(n===7||n===9||n===13) f.seventh = true; else if(n===11) f.eleventh = true; s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^[#b]\d{1,2}/))){ s = s.slice(m[0].length); continue; }
+    if((m = s.match(/^\([^)]*\)/))){ s = s.slice(m[0].length); continue; }
+    return null;
+  }
+  return s.length ? null : f;
+}
+function impQuality(f){
+  if(f.dim) return 'dim';
+  if(f.minor) return f.seventh ? 'm7' : 'm';
+  if(f.maj) return 'maj7';
+  if(f.sus) return f.sus==='2' ? 'sus2' : 'sus4';
+  if(f.eleventh) return '11';
+  if(f.seventh) return '7';
+  return '';
+}
+const IMP_EXACT_TAILS = new Set(['','m','7','maj7','m7','sus4','sus2','dim','11']);
+
+// ----- una nota con alteración: C, Bb, F#, Do, Sib, SOL... -----
+function impNoteHeads(s, latinCap){
+  const out = [];
+  let m = s.match(/^([A-G])([#b]?)(.*)$/);
+  if(m) out.push({name:IMP_EN_TO_LAT[m[1]], acc:m[2]==='b'?'B':m[2], tail:m[3]});
+  m = s.match(/^(DO|RE|MI|FA|SOL|LA|SI|Do|Re|Mi|Fa|Sol|La|Si)([#b]?)(.*)$/);
+  if(m){
+    const upper = m[1] === m[1].toUpperCase();
+    if(upper || latinCap) out.push({name:m[1].toUpperCase(), acc:m[2]==='b'?'B':m[2], tail:m[3]});
+  }
+  return out;
+}
+function impBassNote(s, latinCap){
+  const heads = impNoteHeads(s, latinCap);
+  for(const h of heads){ if(h.tail==='') return {name:h.name, acc:h.acc}; }
+  return null;
+}
+// token -> {name, acc, qual, bass, lossy, orig} o null si no es un acorde
+function impParseChord(raw, latinCap){
+  let t = raw.replace(/^[|(\[{]+/, '').replace(/[|\]},;:.]+$/, '');
+  if(t.indexOf('(') === -1) t = t.replace(/\)+$/, '');      // "(Am)" sí, pero "Am(add9)" conserva su paréntesis
+  if(!t) return null;
+  t = t.replace(/\/{2,}$/, '');           // "C//" -> repetición pegada al acorde
+  if(/\/$/.test(t)) t = t.slice(0,-1);
+  const orig = t;
+  let main = t, bassStr = null;
+  const sl = t.indexOf('/');
+  if(sl > 0){ main = t.slice(0, sl); bassStr = t.slice(sl+1); }
+  let bass = null;
+  if(bassStr !== null){ bass = impBassNote(bassStr, latinCap); if(!bass) return null; }
+  for(const h of impNoteHeads(main, latinCap)){
+    const f = impParseTail(h.tail);
+    if(f) return {name:h.name, acc:h.acc, qual:impQuality(f), bass, lossy:!IMP_EXACT_TAILS.has(h.tail), orig};
+  }
+  return null;
+}
+function impIdx(c){ return (((IMP_LAT_IDX[c.name] + (c.acc==='#'?1:(c.acc==='B'?-1:0))) % 12) + 12) % 12; }
+function impBassStr(c){ return c.name + c.acc + (c.bass ? '/' + c.bass.name + c.bass.acc : ''); }
+function impIsAmbiguousWord(raw){ return /^(A|E|DO|RE|MI|FA|SOL|LA|SI|Do|Re|Mi|Fa|Sol|La|Si)$/.test(raw.replace(/^[|(\[{]+|[|)\]},;:.]+$/g,'')); }
+
+// ----- líneas formadas solo por acordes -----
+function impTokenizeChordLine(line, latinCap){
+  const toks = line.trim().split(/\s+/);
+  const out = []; let count = 0;
+  for(const t of toks){
+    if(!t) continue;
+    if(/^[|\-–—_.·:~\\*]+$/.test(t) || /^\/{1,4}$/.test(t)) continue;
+    if(/^\(?[xX×]\s*\d+\)?$/.test(t) || /^\d+[xX×]$/.test(t)){ out.push({marker:'(x'+t.replace(/\D/g,'')+')'}); continue; }
+    if(/^\(?bis\)?$/i.test(t)){ out.push({marker:'(x2)'}); continue; }
+    if(/^\(?N\.?C\.?\)?$/i.test(t)) continue;
+    const c = impParseChord(t, latinCap);
+    if(!c) return null;
+    out.push(c); count++;
+  }
+  return count ? {tokens:out, count} : null;
+}
+function impChordLine(line){
+  let r = impTokenizeChordLine(line, false);
+  if(r) return r;
+  if(line.trim().split(/\s+/).length >= 2) r = impTokenizeChordLine(line, true);   // "Do Sol Lam Fa" con inicial mayúscula
+  return r;
+}
+// acordes al principio de la línea y luego la letra: "D  Digno eres tú Señor"
+function impInlineLine(line){
+  const re = /(\S+)(\s+|$)/g;
+  const chords = []; let m, end = 0;
+  while((m = re.exec(line)) !== null){
+    const c = impParseChord(m[1], false);
+    if(!c) break;
+    if(impIsAmbiguousWord(m[1]) && m[2].length < 2) break;
+    chords.push(c); end = re.lastIndex;
+  }
+  if(!chords.length) return null;
+  const rest = line.slice(end).trim();
+  if(!rest || !/[A-Za-zÁ-úñÑ]{2,}/.test(rest)) return null;
+  return {tokens:chords, count:chords.length, text:rest};
+}
+// acordes entre corchetes dentro de la letra: "[C]Hola [G]mundo"
+function impBracketLine(line){
+  const found = line.match(/\[[^\]]+\]/g);
+  if(!found) return null;
+  const chords = [];
+  for(const f of found){ const c = impParseChord(f.slice(1,-1).trim(), false); if(!c) return null; chords.push(c); }
+  const text = line.replace(/\[[^\]]*\]/g,'').replace(/\s+/g,' ').trim();
+  return {tokens:chords, count:chords.length, text};
+}
+
+// ----- etiquetas de sección -----
+function impIsLabelText(s){
+  const x = s.replace(/^[\[\(\s]+|[\]\)\s:]+$/g,'').replace(/\(\s*[xX×]?\s*\d+\s*[xX×]?\s*\)/g,'').trim();
+  if(!x || x.length > 40) return false;
+  const parts = x.split(/\s*(?:\/|&|\+|\by\b|\be\b)\s*/i);
+  return parts.every(p=>{ const m = p.match(IMP_LABEL_RE); return !!m && /^[\s\dºª.]*$/.test(p.slice(m[0].length)); });
+}
+function impNormLabelPart(p){
+  const orig = p.trim();
+  const low = orig.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const m = low.match(/^(.*?)(?:\s*(\d+))?$/);
+  const base = m[1].trim(), num = m[2] || '';
+  let name = null;
+  if(/^intro(duccion)?$/.test(base)) name = 'Intro';
+  else if(/^(verso|estrofa|verse)$/.test(base)) name = 'Verso';
+  else if(base==='primeira parte') return 'Verso 1';
+  else if(base==='segunda parte') return 'Verso 2';
+  else if(base==='terceira parte') return 'Verso 3';
+  else if(base==='parte') name = 'Parte';
+  else if(/^pre ?-?(coro|chorus|refrao)$/.test(base)) name = 'Pre-coro';
+  else if(/^(coro|estribillo|chorus|refrao|refrain)$/.test(base)) name = 'Coro';
+  else if(/^(puente|bridge|ponte)$/.test(base)) name = 'Puente';
+  else if(/^(final|outro|ending|coda)$/.test(base)) name = 'Final';
+  else if(/^(interludio|interlude|instrumental)$/.test(base)) name = 'Instrumental';
+  else if(base==='solo') name = 'Solo';
+  if(name) return name + (num ? ' '+num : '');
+  return orig.charAt(0).toUpperCase() + orig.slice(1);
+}
+function impNormLabel(t){
+  const s = t.replace(/^[\[\(\s]+|[\]\)\s:]+$/g,'').replace(/\(\s*[xX×]?\s*\d+\s*[xX×]?\s*\)/g,'').replace(/\s+/g,' ').trim();
+  return s.split(/\s*\/\s*/).map(impNormLabelPart).join(' / ');
+}
+function impLooksLikeLabel(s){
+  const t = s.trim();
+  const words = t.split(/\s+/);
+  return t.length <= 40 && words.length <= 5 && !/[,;.!?¿¡]$/.test(t) && /[A-Za-zÁ-úñÑ]/.test(t);
+}
+
+// ----- clasificación de una línea -----
+function impClassify(line){
+  const t = line.trim();
+  if(!t || /^[\s*_=\-–—.·~•]+$/.test(t)) return {cls:'blank'};
+  if(/^\s*(acordes utilizados|chords used|etiquetas|comentarios|compartir|tambi[eé]n te puede interesar)\s*:?\s*$/i.test(t) || /^\s*(copyright|©)/i.test(t)) return {cls:'stop'};
+  if(/^[eEBGDAa-g]?\s*\|?[-0-9hpbrx\/\\~()|\s]{8,}$/.test(t) && /[-]{3,}/.test(t)) return {cls:'tab'};
+  let m = t.match(/^\{\s*(title|t|subtitle|st|artist|key|capo|comment|c|ci|tempo|time)\s*:?\s*(.*?)\s*\}$/i);
+  if(m){
+    const d = m[1].toLowerCase();
+    if(d==='title' || d==='t') return {cls:'title', text:m[2]};
+    if(d==='key'){ const kc = impParseChord(m[2].split(/\s+/)[0] || '', false); if(kc) return {cls:'key', chord:kc}; }
+    return {cls:'meta'};
+  }
+  m = t.match(/^(tono|tonalidad|tom|key|tonality)\b\s*([:=])?\s*(.*)$/i);
+  if(m){
+    const rest = m[3].trim();
+    const c = impParseChord(rest.split(/\s+/)[0] || '', false);
+    if(c && (m[2] || rest.split(/\s+/).length === 1)) return {cls:'key', chord:c};
+  }
+  m = t.match(/^(capo|capotraste|cejilla|cejuela)\b[^\d]{0,20}(\d{1,2})?/i);
+  if(m && t.length < 40) return {cls:'capo', capo: m[2] ? parseInt(m[2],10) : null};
+  if(/^(afinaci[oó]n|ritmo|comp[aá]s|bpm|tempo|autor(?:es)?|artista|int[eé]rprete|letra(?: y m[uú]sica)?|m[uú]sica|[aá]lbum|a[nñ]o|g[eé]nero|dificultad|transcrip\w*|fuente|enviad\w*)\s*[:=]/i.test(t)) return {cls:'meta'};
+  if(/^\(?\s*[xX×]\s*\d+\s*\)?$/.test(t) || /^\(?\s*\d+\s*[xX×]\s*\)?$/.test(t)) return {cls:'marker', text:'(x'+t.replace(/\D/g,'')+')'};
+  if(/^\(.*\)$/.test(t) && !impChordLine(t.slice(1,-1))) return {cls:'note'};
+
+  // [Intro] / [Intro] C G Am
+  m = t.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if(m && !impParseChord(m[1].trim(), false)){
+    if(!m[2]) return {cls:'label', label:m[1]};
+    const r = impChordLine(m[2]);
+    return r ? {cls:'labelchords', label:m[1], tokens:r.tokens, count:r.count} : {cls:'label', label:m[1], lyric:m[2]};
+  }
+  // Intro: C G Am   /   Coro (x2): C G   /   Puente:
+  m = t.match(/^([^:]{1,32}):\s*(.*)$/);
+  if(m && impIsLabelText(m[1])){
+    if(!m[2]) return {cls:'label', label:m[1]};
+    const r = impChordLine(m[2]);
+    return r ? {cls:'labelchords', label:m[1], tokens:r.tokens, count:r.count} : {cls:'label', label:m[1], lyric:m[2]};
+  }
+  // la línea entera es una etiqueta conocida
+  if(impIsLabelText(t)) return {cls:'label', label:t};
+  // Intro C G Am F  (sin dos puntos)
+  m = t.match(/^(\S+(?:\s+\d)?)\s+(.+)$/);
+  if(m && impIsLabelText(m[1])){ const r = impChordLine(m[2]); if(r) return {cls:'labelchords', label:m[1], tokens:r.tokens, count:r.count}; }
+
+  const ch = impChordLine(t);
+  if(ch) return {cls:'chords', tokens:ch.tokens, count:ch.count};
+  const br = impBracketLine(t);
+  if(br) return {cls:'inline', tokens:br.tokens, count:br.count, text:br.text};
+  const il = impInlineLine(line);
+  if(il) return {cls:'inline', tokens:il.tokens, count:il.count, text:il.text};
+  return {cls:'text', text:t};
+}
+
+// ----- armado de la canción -----
+function impTitleCase(s){
+  if(s !== s.toLowerCase() && s !== s.toUpperCase()) return s;
+  const small = new Set(['de','del','la','el','los','las','y','e','en','a','al','tu','tus','su','sus','mi','mis','un','una','por','con','que','se','lo','para','o','u']);
+  return s.toLowerCase().split(/\s+/).map((w,i)=> (i>0 && small.has(w)) ? w : w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+}
+function impCleanTitle(raw){
+  let s = raw.replace(/\s+/g,' ').trim();
+  s = s.replace(/\s+[-–—]?\s*(letra y acordes|acordes y letra|acordes|cifra|chords|tabs?)\s*$/i, '').trim();
+  let keyChord = null;
+  const m = s.match(/^(.*\S)\s+([A-G][#b]?m?)$/);
+  if(m){ const c = impParseChord(m[2], false); if(c && (c.qual==='' || c.qual==='m')){ keyChord = c; s = m[1]; } }
+  return {title: impTitleCase(s), keyChord};
+}
+function impGuessKey(chords){
+  const diat = [[0,''],[2,'m'],[4,'m'],[5,''],[7,''],[9,'m'],[11,'dim']];
+  const cls = q => (q==='m'||q==='m7') ? 'm' : (q==='dim' ? 'dim' : '');
+  let best = 0, bestScore = -1;
+  for(let k=0;k<12;k++){
+    let score = 0;
+    chords.forEach(c=>{
+      const d = diat.find(x=>x[0] === (((impIdx(c)-k)%12)+12)%12);
+      if(d) score += (cls(c.qual)===d[1]) ? 2 : 1;
+    });
+    if(chords.length && impIdx(chords[0])===k) score += 0.5;
+    if(chords.length && impIdx(chords[chords.length-1])===k) score += 0.4;
+    if(score > bestScore){ bestScore = score; best = k; }
+  }
+  return best;
+}
+function impLyricHint(lyrics){
+  const first = (lyrics||[]).find(x=>x && /[A-Za-zÁ-úñÑ]/.test(x));
+  if(!first) return null;
+  let s = first.replace(/\s+/g,' ').replace(/[,;:\s]+$/,'').trim();
+  if(s.length > 60){ s = s.slice(0,60); const i = s.lastIndexOf(' '); if(i > 30) s = s.slice(0,i); s = s.replace(/[,;:\s]+$/,'') + '…'; }
+  return s;
+}
+function impJoinLines(lines){
+  let out = '';
+  lines.forEach((l,i)=>{
+    const str = l.strs.join(' ');
+    if(i===0){ out = str; return; }
+    out += ((lines[i-1].count>=2 || l.count>=2) ? ' / ' : ' ') + str;
+  });
+  return out;
+}
+// "Puente: G A Bm F#m" y debajo las mismas líneas repetidas -> alcanza con el resumen
+function impCollapseSummary(lines){
+  if(lines.length < 3 || !lines[0].summary) return lines;
+  const clean = l => l.strs.filter(s=>!/^\(x\d+\)$/.test(s));
+  const pat = clean(lines[0]);
+  const rest = [].concat(...lines.slice(1).map(clean));
+  if(pat.length < 2 || rest.length < pat.length*2) return lines;
+  let mism = 0;
+  for(let i=0;i<rest.length;i++){ if(rest[i] !== pat[i % pat.length]) mism++; }
+  return mism <= 1 ? [lines[0]] : lines;
+}
+function impCompressLines(lines){
+  let r = lines.filter((l,i)=> i===0 || l.strs.join(' ') !== lines[i-1].strs.join(' '));
+  for(let k=0;k<2;k++){
+    const n = r.length;
+    if(n >= 2 && n % 2 === 0){
+      const a = r.slice(0,n/2).map(l=>l.strs.join(' ')).join('|'), b = r.slice(n/2).map(l=>l.strs.join(' ')).join('|');
+      if(a === b) r = r.slice(0,n/2); else break;
+    }
+  }
+  return r;
+}
+
+function parseChordSheet(raw){
+  const res = {title:'', key:null, keySource:'', keyNote:'', capo:null, sections:[], simplified:[], skippedRepeats:0, droppedEmpty:0, chordCount:0};
+  const lines = String(raw||'').replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ').replace(/\t/g,'    ')
+    .split('\n').map(l=>l.replace(/\s+$/,'')).filter(l=>!/^\s*```/.test(l));
+  const items = lines.map((l,i)=>{ const c = impClassify(l); c.i = i; return c; });
+
+  let headerZone = true, titleRaw = null, explicitKey = null, cur = null, prevBlank = true;
+  const sections = [], allChords = [];
+  const startSection = (label, unlabeled)=>{ cur = {label, unlabeled:!!unlabeled, chordLines:[], lyrics:[], rep:''}; sections.push(cur); };
+  const addChordLine = (tokens, summary)=>{
+    const strs = []; let count = 0, prevOut = null, prevOrig = null;
+    tokens.forEach(tk=>{
+      if(tk.marker){ strs.push(tk.marker); return; }
+      const out = impBassStr(tk);
+      if(prevOut === out && prevOrig !== tk.orig) { prevOrig = tk.orig; return; }   // "Asus4 A" -> un solo LA
+      if((tk.qual || tk.lossy) && res.simplified.length < 40 && !res.simplified.some(x=>x[0]===tk.orig)) res.simplified.push([tk.orig, out]);
+      strs.push(out); count++; prevOut = out; prevOrig = tk.orig;
+      allChords.push(tk);
+    });
+    if(count) cur.chordLines.push({strs, count, summary:!!summary});
+  };
+  const nextIsChords = (i)=>{
+    for(let j=i+1;j<items.length;j++){ if(items[j].cls==='blank') continue; return items[j].cls==='chords' || items[j].cls==='inline'; }
+    return false;
+  };
+
+  for(let i=0;i<items.length;i++){
+    const it = items[i];
+    if(it.cls==='stop') break;
+    if(it.cls==='blank'){ prevBlank = true; continue; }
+    switch(it.cls){
+      case 'key': if(!explicitKey) explicitKey = it.chord; break;
+      case 'capo': if(res.capo===null && it.capo!==null) res.capo = it.capo; break;
+      case 'meta': case 'note': case 'tab': break;
+      case 'title': if(titleRaw===null) titleRaw = it.text; break;
+      case 'marker': if(cur) cur.rep = it.text; break;
+      case 'text':
+        if(headerZone){ if(titleRaw===null) titleRaw = it.text; break; }
+        if(prevBlank && impLooksLikeLabel(it.text) && nextIsChords(i)){ startSection(impNormLabel(it.text), false); break; }
+        if(cur) cur.lyrics.push(it.text);
+        break;
+      case 'label': headerZone = false; startSection(impNormLabel(it.label), false); if(it.lyric) cur.lyrics.push(it.lyric); break;
+      case 'labelchords': headerZone = false; startSection(impNormLabel(it.label), false); addChordLine(it.tokens, true); break;
+      case 'chords': case 'inline':
+        headerZone = false;
+        if(!cur || (cur.unlabeled && prevBlank && cur.chordLines.length)) startSection('', true);
+        addChordLine(it.tokens);
+        if(it.text) cur.lyrics.push(it.text);
+        break;
+    }
+    prevBlank = false;
+  }
+
+  // título (y tono si viene pegado al título)
+  let titleKey = null;
+  if(titleRaw){
+    const ct = impCleanTitle(titleRaw);
+    // la nota final del título solo se toma como tono si la hoja no trae su propia línea "Tono:" que la contradiga
+    if(ct.keyChord && explicitKey && impIdx(ct.keyChord) !== impIdx(explicitKey)){ res.title = impTitleCase(titleRaw.replace(/\s+/g,' ').trim()); }
+    else { res.title = ct.title; titleKey = ct.keyChord; }
+  }
+
+  // secciones
+  let built = [];
+  sections.forEach(sec=>{
+    const lines2 = impCompressLines(impCollapseSummary(sec.chordLines));
+    if(!lines2.length){ res.droppedEmpty++; return; }
+    const sig = impJoinLines(lines2);
+    built.push({label:sec.label, unlabeled:sec.unlabeled, sig, chords: sig + (sec.rep ? ' '+sec.rep : ''), lyric: impLyricHint(sec.lyrics)});
+  });
+  // repetidas y numeración
+  const kept = [], usedLabel = {};
+  built.forEach(b=>{
+    const lab = b.label.toLowerCase();
+    if(kept.some(k=>k.sig===b.sig && (b.unlabeled || k.label.toLowerCase()===lab))){ res.skippedRepeats++; return; }
+    if(!b.unlabeled){
+      usedLabel[lab] = (usedLabel[lab]||0) + 1;
+      if(usedLabel[lab] > 1 && !/\d$/.test(b.label)) b.label = b.label + ' ' + usedLabel[lab];
+    }
+    kept.push(b);
+  });
+  let u = 0;
+  const hasVerso2 = kept.some(k=>/^(verso|estrofa) 2$/i.test(k.label));
+  kept.forEach((k,idx)=>{ if(k.unlabeled){ k.label = (idx===0 && hasVerso2) ? 'Verso 1' : 'Parte '+(++u); } });
+  res.sections = kept.map(k=>({label:k.label, chords:k.chords, lyric:k.lyric}));
+  res.chordCount = allChords.length;
+
+  // tono
+  const setKey = (c, source)=>{
+    let idx = impIdx(c);
+    if(c.qual==='m' || c.qual==='m7'){ res.keyNote = 'La hoja indica '+c.name+c.acc+'m (menor): uso su relativo mayor.'; idx = (idx+3)%12; }
+    res.key = IMP_NAMES[idx]; res.keySource = source;
+  };
+  if(explicitKey) setKey(explicitKey, 'indicado en la hoja');
+  else if(titleKey) setKey(titleKey, 'indicado junto al título');
+  else if(allChords.length){ res.key = IMP_NAMES[impGuessKey(allChords)]; res.keySource = 'deducido de los acordes (revisalo)'; }
+  return res;
+}
+if(typeof module !== 'undefined') module.exports = {parseChordSheet, impParseChord};
+
+// ---------- pegar una canción: pantalla ----------
+const pasteText = document.getElementById('pasteText');
+const pasteReport = document.getElementById('pasteReport');
+
+function clearPasteArea(){ pasteText.value = ''; pasteReport.innerHTML = ''; }
+
+function renderPasteReport(r){
+  pasteReport.innerHTML = '';
+  const add = (txt, cls)=>{ const d = document.createElement('div'); d.className = 'rep-line'+(cls ? ' '+cls : ''); d.textContent = txt; pasteReport.appendChild(d); };
+  if(!r.sections.length){
+    add('No encontré acordes en el texto pegado. Fijate de copiar la hoja completa (los acordes y la letra) y probá de nuevo.', 'rep-warn');
+    return;
+  }
+  const n = r.sections.length;
+  add('Listo: armé '+n+(n===1 ? ' sección' : ' secciones')+'. Revisá los campos de abajo y tocá "Guardar canción" cuando esté bien.', 'rep-ok');
+  add(r.title ? 'Título: «'+r.title+'»' : 'No encontré el título: escribilo abajo.', r.title ? '' : 'rep-warn');
+  add('Tono: '+r.key+' ('+r.keySource+').'+(r.keyNote ? ' '+r.keyNote : ''), /deducido/.test(r.keySource) ? 'rep-warn' : '');
+  if(r.capo) add('La hoja menciona capo en el traste '+r.capo+': guardé los acordes tal como están escritos (la forma que se toca), no el tono que suena.', 'rep-warn');
+  if(r.simplified.length){
+    const ex = r.simplified.slice(0,4).map(x=>x[0]+' → '+x[1]).join(', ');
+    add('Para el bajo dejé solo la nota, sin menores ni extensiones (ej.: '+ex+').');
+  }
+  if(r.skippedRepeats) add('Salteé '+r.skippedRepeats+(r.skippedRepeats===1 ? ' sección repetida' : ' secciones repetidas')+' (mismos acordes).');
+  const dup = r.title ? allSongs().find(s=>s.title.trim().toLowerCase()===r.title.trim().toLowerCase()) : null;
+  if(dup) add('Ojo: ya tenés una canción llamada «'+dup.title+'».', 'rep-warn');
+}
+
+document.getElementById('pasteConvertBtn').addEventListener('click', ()=>{
+  if(!pasteText.value.trim()){ alert('Pegá primero el texto de la canción en el cuadro.'); return; }
+  const r = parseChordSheet(pasteText.value);
+  renderPasteReport(r);
+  if(!r.sections.length) return;           // si no se pudo armar nada, no tocamos el formulario
+  const prevTitle = document.getElementById('f_title').value.trim();
+  resetForm();                              // sale del modo edición: esto es una canción nueva
+  document.getElementById('f_title').value = r.title || prevTitle;
+  fKey.value = r.key || 'RE';
+  fSections.innerHTML = '';
+  r.sections.forEach(s=>addSectionRow(s.label, s.chords, s.lyric));
+  pasteReport.scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+// ---------- cuando la búsqueda no encuentra nada ----------
+function updateEmptyHelp(show){
+  const box = document.getElementById('emptyHelp');
+  if(!box) return;
+  box.style.display = show ? 'block' : 'none';
+  if(!show) return;
+  const q = searchInput.value.trim();
+  const g = site => 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:' + site);
+  document.getElementById('emptyLacuerda').href = g('lacuerda.net');
+  document.getElementById('emptyCifra').href = g('cifraclub.com');
+}
+document.getElementById('emptyPasteBtn').addEventListener('click', ()=>{
+  const q = searchInput.value.trim();
+  showTab('herramientas', false);
+  resetForm();
+  if(q) document.getElementById('f_title').value = q;
+  addForm.classList.add('open');
+  addToggleArrow.innerHTML = '&#9650;';
+  window.scrollTo({top:0, behavior:'smooth'});
+  pasteText.focus();
+});
+
+// ---------- si vuelve la conexión, reintentar la sincronización ----------
+window.addEventListener('online', async ()=>{
+  if(!supabaseClient) return;
+  if(!cloudReadOk){
+    const ok = await cloudPull();
+    if(ok){
+      renderSongList(); renderLists(); renderCart();
+      setCloudStatus('&#9989; Conectado. Sincronizando en este dispositivo.', 'ok');
+      toast('Volvió la conexión: todo sincronizado');
+    }
+  } else {
+    for(const k of getPending()){ await cloudPush(k, localValueFor(k)); }
+  }
+});
 
 // ---------- init ----------
 renderSongList();
