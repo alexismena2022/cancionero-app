@@ -88,7 +88,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   box-shadow:0 3px 16px rgba(0,0,0,0.15);
   font-family:var(--prev-font);font-size:var(--prev-size);
   /* la hoja es de papel: siempre con los colores del tema claro (como al imprimir), aunque la app esté en tema oscuro */
-  --card:#fff; --ink:#211c17; --muted:#7a7266; --accent:#8a5a2b; --accent-light:#f1e3d1; --border:#e6ddd0; --warn:#a3691f;
+  --card:#fff; --ink:#211c17; --muted:#7a7266; --accent:#8a5a2b; --accent-light:#f1e3d1; --border:#e6ddd0; --warn:#a3691f; --green:#3f7d4f;
   color:#211c17;
 }
 .cart-empty{color:var(--muted);text-align:center;padding:60px 10px;font-size:0.9rem;font-family:Arial,sans-serif;}
@@ -363,6 +363,52 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   font-weight:bold;font-size:0.8rem;cursor:pointer;max-width:92vw;
 }
 
+/* ---------- Copia de seguridad y pedal ---------- */
+#backupWrap, #pedalWrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+.tool-toggle{cursor:pointer;font-weight:bold;color:var(--accent);display:flex;justify-content:space-between;align-items:center;font-size:0.95rem;}
+.tool-body{display:none;margin-top:12px;}
+.tool-body.open{display:block;}
+.bk-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.bk-actions button, .bk-box button{flex:1 1 140px;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:0.85rem;cursor:pointer;}
+.bk-actions button.primary, .bk-box button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:bold;}
+.bk-actions button.danger, .bk-box button.danger{color:#c44;}
+#backupInfo{font-size:0.8rem;line-height:1.6;color:var(--ink);}
+#backupMsg{margin-top:8px;font-size:0.8rem;line-height:1.5;}
+#backupMsg.err{color:var(--warn);}
+#backupMsg.ok{color:var(--green);}
+.bk-box{margin-top:10px;padding:10px;border:1px dashed var(--border);border-radius:8px;font-size:0.8rem;line-height:1.6;color:var(--ink);}
+.bk-box .warn{color:var(--warn);}
+#backupReminder{display:none;margin:0 0 10px;padding:10px 12px;border:1px solid var(--accent);background:var(--accent-light);border-radius:10px;font-size:0.82rem;color:var(--ink);}
+#backupReminder .bk-actions{margin-top:8px;}
+.pedal-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);}
+.pedal-name{flex:1 1 150px;font-size:0.84rem;color:var(--ink);}
+.pedal-keys{display:flex;gap:4px;flex-wrap:wrap;flex:2 1 160px;font-size:0.76rem;color:var(--muted);}
+.pedal-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:14px;background:var(--accent-light);color:var(--ink);font-size:0.78rem;font-family:'Courier New',monospace;}
+.pedal-chip button{border:none;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:0.85rem;}
+.pedal-assign{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:0.78rem;cursor:pointer;}
+.pedal-assign.listening{background:var(--accent);color:#fff;border-color:var(--accent);}
+#pedalTester{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--bg);border:1px solid var(--border);font-size:0.82rem;color:var(--ink);}
+
+/* ---------- Legibilidad: textos que se perdían en el tema oscuro y botones sin fondo ---------- */
+.backup-row button{background:var(--card);}
+.grado-btn{background:var(--card);}
+#clearbtn, #cancelSongBtn{background:#6f6f6f;}
+#connectSupaBtn{background:var(--green);}
+#disconnectSupaBtn{background:#6f6f6f;}
+#cloudStatus{background:var(--accent-light);}
+html.dark-theme #cloudStatus.ok{background:#1f3326;}
+html.dark-theme #cloudStatus.err{background:#3a2a17;}
+html.dark-theme #list .song-key.multi, html.dark-theme #list .badge-orig{background:#1f3326;color:var(--green);}
+/* en tema oscuro el naranja y el verde son claros: el texto de los botones tiene que ser oscuro */
+html.dark-theme #printbtn, html.dark-theme #pdfbtn, html.dark-theme #saveSongBtn, html.dark-theme #saveListBtn,
+html.dark-theme #connectSupaBtn, html.dark-theme .tab-btn.active, html.dark-theme .list-actions button.primary,
+html.dark-theme #pasteConvertBtn, html.dark-theme .bk-actions button.primary, html.dark-theme .bk-box button.primary{color:#1a1510;}
+html.dark-theme .chrom-btn:active, html.dark-theme .chrom-btn.playing{background:var(--accent);color:#1a1510;}
+html.dark-theme .grado-btn:active, html.dark-theme .grado-btn.playing{background:var(--accent);}
+html.dark-theme .grado-btn:active .notename, html.dark-theme .grado-btn.playing .notename,
+html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .roman{color:#1a1510;}
+#gradosRowLive .grado-btn:active, #gradosRowLive .grado-btn.playing{background:#6b431d;}
+
 @page{ size:20cm 30cm; margin:0; }
 @media print{
   html.dark-theme{
@@ -434,6 +480,14 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 <main>
   <div id="colsongs">
 
+    <div id="backupReminder">
+      <div id="backupReminderText"></div>
+      <div class="bk-actions">
+        <button type="button" class="primary" id="backupReminderNow">&#11015;&#65039; Hacer la copia ahora</button>
+        <button type="button" id="backupReminderLater">Más tarde</button>
+      </div>
+    </div>
+
     <div id="tabBar">
       <button type="button" class="tab-btn active" data-tab="buscar">&#128269; Buscar</button>
       <button type="button" class="tab-btn" data-tab="listas">&#128203; Listas</button>
@@ -469,6 +523,32 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
     </div>
 
     <div id="tabHerramientas" class="tab-panel" style="display:none;">
+    <div id="backupWrap">
+      <div class="tool-toggle" id="backupToggle">&#128190; Copia de seguridad <span id="backupToggleArrow">&#9650;</span></div>
+      <div class="tool-body open" id="backupBody">
+        <div class="formhint" style="margin:0 0 8px;">Un solo archivo con TODO lo tuyo: las canciones que agregaste, tus ediciones a las originales y tus listas. Si algo se pierde o se pisa, lo restaurás en un minuto.</div>
+        <div id="backupInfo"></div>
+        <div class="bk-actions">
+          <button type="button" class="primary" id="backupSaveBtn">&#11015;&#65039; Guardar copia</button>
+          <button type="button" id="backupRestoreBtn">&#11014;&#65039; Restaurar copia…</button>
+        </div>
+        <input type="file" id="backupFile" accept=".json,application/json,text/plain" style="display:none;">
+        <div class="bk-box" id="backupRestoreBox" style="display:none;"></div>
+        <div class="bk-actions"><button type="button" id="backupUndoBtn" style="display:none;"></button></div>
+        <div id="backupMsg"></div>
+      </div>
+    </div>
+
+    <div id="pedalWrap">
+      <div class="tool-toggle" id="pedalToggle">&#127929; Pedal o teclado (modo en vivo) <span id="pedalToggleArrow">&#9660;</span></div>
+      <div class="tool-body" id="pedalBody">
+        <div class="formhint" style="margin:0 0 6px;">Un pedal Bluetooth que funcione como teclado (los de &quot;pasar páginas&quot;) puede pasar de canción y cambiar el tono sin soltar el instrumento. Asignale a cada acción la tecla que manda tu pedal.</div>
+        <div id="pedalRows"></div>
+        <div class="bk-actions"><button type="button" id="pedalResetBtn">Restablecer teclas</button></div>
+        <div id="pedalTester">Probador: pisá el pedal (o apretá una tecla) y acá aparece lo que recibe la app. Si no aparece nada, ese pedal no manda teclas.</div>
+      </div>
+    </div>
+
     <div id="cloudWrap">
       <div id="cloudToggle">&#9729;&#65039; Sincronizar entre dispositivos <span id="cloudToggleArrow">&#9660;</span></div>
       <div id="cloudForm">
@@ -994,6 +1074,7 @@ async function cloudPull(){
     try{ localStorage.setItem(OV_KEY, JSON.stringify(overrides)); }catch(e){}
     try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
     cloudReadOk = true;
+    try{ updateBackupUi(); }catch(e){}
     for(const k of toPush){ await cloudPush(k, localValueFor(k)); }
     return true;
   }catch(e){ console.warn('cloudPull error', e); return false; }
@@ -1036,6 +1117,7 @@ function saveCustom(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(customSongs)); }
   catch(e){ alert('No se pudo guardar en este navegador: '+e.message); }
   cloudPush('customSongs', customSongs);
+  try{ updateBackupUi(); }catch(e){}
 }
 let customSongs = loadCustom();
 customSongs.forEach(s=>{ s.custom=true; });
@@ -1052,6 +1134,7 @@ function saveOverrides(){
   try{ localStorage.setItem(OV_KEY, JSON.stringify(overrides)); }
   catch(e){ alert('No se pudo guardar en este navegador: '+e.message); }
   cloudPush('overrides', overrides);
+  try{ updateBackupUi(); }catch(e){}
 }
 let overrides = loadOverrides();
 
@@ -1066,6 +1149,7 @@ function saveLists(){
   try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
   catch(e){ alert('No se pudo guardar la lista en este navegador: '+e.message); }
   cloudPush('lists', lists);
+  try{ updateBackupUi(); }catch(e){}
 }
 
 // primera vez con esta versión: lo que haya en este dispositivo se considera "sin subir",
@@ -1156,6 +1240,7 @@ function showTab(target, focusSearch){
   document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
   if(target==='buscar' && focusSearch) searchInput.focus();
   if(target==='listas'){ renderLists(); refreshListsFromCloud(); }
+  if(target==='herramientas') updateBackupUi();
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=> showTab(btn.getAttribute('data-tab'), true));
@@ -1860,15 +1945,10 @@ document.getElementById('presentGradosBtn').addEventListener('click', ()=>{
 document.getElementById('presentGradosClose').addEventListener('click', ()=>{
   presentGradosPanel.classList.remove('open');
 });
-rootSelLive.addEventListener('change', renderLiveGrados);
+rootSelLive.addEventListener('change', ()=>{ renderLiveGrados(); rootSelLive.blur(); });
 document.getElementById('presentPrev').addEventListener('click', ()=> goToSlide(presentIndex-1));
 document.getElementById('presentNext').addEventListener('click', ()=> goToSlide(presentIndex+1));
-document.addEventListener('keydown', (e)=>{
-  if(!presentOverlay.classList.contains('open')) return;
-  if(e.key==='ArrowRight') goToSlide(presentIndex+1);
-  if(e.key==='ArrowLeft') goToSlide(presentIndex-1);
-  if(e.key==='Escape'){ presentOverlay.classList.remove('open'); exitFullscreenIfAny(); releaseWakeLock(); }
-});
+// (las teclas del modo en vivo —flechas, Av Pág, espacio, tono— se manejan en la sección "pedal o teclado")
 // tocar un acorde tambien en el modo presentacion
 presentTrack.addEventListener('click', (e)=>{
   if(e.target.matches('.chord-tok')){
@@ -2653,12 +2733,8 @@ function shiftLiveKey(step){
 }
 document.getElementById('liveKeyUp').addEventListener('click', ()=> shiftLiveKey(1));
 document.getElementById('liveKeyDown').addEventListener('click', ()=> shiftLiveKey(-1));
-liveKeySel.addEventListener('change', ()=> setLiveKey(liveKeySel.value));
-document.getElementById('liveKeyReset').addEventListener('click', ()=>{
-  const item = cart[presentIndex];
-  const song = item ? findSong(item.id) : null;
-  if(song) setLiveKey(song.versions[0].key);
-});
+liveKeySel.addEventListener('change', ()=>{ setLiveKey(liveKeySel.value); liveKeySel.blur(); });   // soltar el foco: así las flechas de un pedal no mueven el selector
+document.getElementById('liveKeyReset').addEventListener('click', ()=> resetLiveKey());
 
 // si se abrió una lista y se cambiaron tonos, se ofrece guardarlos en esa lista (solo si las canciones y su orden son las mismas)
 function liveSaveCandidate(){
@@ -2685,6 +2761,417 @@ document.getElementById('liveSaveList').addEventListener('click', ()=>{
   renderLists();
   toast('Tonos guardados en la lista «' + l.name + '»');
 });
+
+// ---------- copia de seguridad completa (canciones propias + ediciones + listas) ----------
+const BK_LAST_KEY = 'cancionero_backup_last_v1';       // cuándo se guardó la última copia
+const BK_SNOOZE_KEY = 'cancionero_backup_snooze_v1';   // "más tarde": hasta cuándo no insistir
+const BK_UNDO_KEY = 'cancionero_pre_restore_v1';       // cómo estaba todo antes de la última restauración
+const BK_EVERY_DAYS = 14, BK_SNOOZE_DAYS = 3;
+const BK_ID_RE = /^[A-Za-z0-9_.:-]{1,80}$/;
+const BK_KEY_RE = /^(DO|RE|MI|FA|SOL|LA|SI)(#|B)?$/;
+const BK_BAD_KEYS = ['__proto__','constructor','prototype'];
+
+function bkCurrentData(){ return {customSongs, overrides, lists}; }
+function bkCounts(d){ return {canciones:(d.customSongs||[]).length, ediciones:Object.keys(d.overrides||{}).length, listas:(d.lists||[]).length}; }
+function bkHasData(){ const c = bkCounts(bkCurrentData()); return c.canciones + c.ediciones + c.listas > 0; }
+function buildBackup(){
+  const datos = JSON.parse(JSON.stringify(bkCurrentData()));
+  return {tipo:'cancionero-backup', version:1, creado:new Date().toISOString(), app:'Cancionero by Samu Mena', resumen:bkCounts(datos), datos};
+}
+function bkFileName(){
+  const d = new Date(), p = n=>String(n).padStart(2,'0');
+  return 'cancionero-copia-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.json';
+}
+function bkPlural(n, uno, varios){ return n+' '+(n===1 ? uno : varios); }
+function bkSummaryText(c){ return bkPlural(c.canciones,'canción agregada','canciones agregadas')+', '+bkPlural(c.ediciones,'edición','ediciones')+' a originales y '+bkPlural(c.listas,'lista','listas'); }
+function bkMsg(text, cls){ const m = document.getElementById('backupMsg'); m.textContent = text || ''; m.className = cls || ''; }
+
+// ----- guardar la copia -----
+function bkIsMobile(){
+  const ua = navigator.userAgent || '';
+  return /iPhone|iPad|iPod|Android/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+}
+function bkMarkDone(){
+  try{ localStorage.setItem(BK_LAST_KEY, new Date().toISOString()); localStorage.removeItem(BK_SNOOZE_KEY); }catch(e){}
+  updateBackupUi();
+}
+async function bkSave(){
+  const backup = buildBackup();
+  const json = JSON.stringify(backup, null, 2);
+  const name = bkFileName();
+  const done = ()=>{ bkMarkDone(); bkMsg('Copia lista: '+name+' ('+bkSummaryText(backup.resumen)+'). Guardala en un lugar seguro: Archivos, Drive, o mandátela por mail.', 'ok'); return true; };
+  // en el celular se usa la hoja de compartir del sistema (Guardar en Archivos, AirDrop, Drive, WhatsApp…): es lo más confiable en iPhone
+  if(bkIsMobile() && navigator.share && navigator.canShare){
+    try{
+      for(const type of ['application/json','text/plain']){
+        const file = new File([json], name, {type});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title:'Copia de seguridad del cancionero'});
+          return done();
+        }
+      }
+    }catch(e){
+      if(e && e.name === 'AbortError'){ bkMsg('No se guardó la copia: cerraste la ventana de compartir.', 'err'); return false; }
+      // cualquier otro problema con compartir: seguimos con la descarga normal
+    }
+  }
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+  return done();
+}
+
+// ----- avisos -----
+function bkAgeDays(){
+  const t = Date.parse(localStorage.getItem(BK_LAST_KEY) || '');
+  return isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+function bkLastText(){
+  const d = bkAgeDays();
+  if(d === null) return 'Todavía no hiciste ninguna copia.';
+  const date = new Date(Date.parse(localStorage.getItem(BK_LAST_KEY))).toLocaleDateString('es-AR');
+  return 'Última copia: '+date+(d===0 ? ' (hoy)' : d===1 ? ' (ayer)' : ' (hace '+d+' días)')+'.';
+}
+function updateBackupUi(){
+  const info = document.getElementById('backupInfo');
+  if(!info) return;
+  info.textContent = 'Ahora tenés '+bkSummaryText(bkCounts(bkCurrentData()))+'. '+bkLastText();
+  let snap = null;
+  try{ snap = JSON.parse(localStorage.getItem(BK_UNDO_KEY) || 'null'); }catch(e){}
+  const undo = document.getElementById('backupUndoBtn');
+  if(snap && snap.datos){
+    undo.style.display = '';
+    undo.textContent = '↩️ Deshacer la última restauración ('+new Date(snap.guardado).toLocaleDateString('es-AR')+')';
+  } else undo.style.display = 'none';
+  const box = document.getElementById('backupReminder');
+  const age = bkAgeDays();
+  const snooze = Date.parse(localStorage.getItem(BK_SNOOZE_KEY) || '');
+  const due = bkHasData() && (age === null || age >= BK_EVERY_DAYS) && !(snooze > Date.now());
+  box.style.display = due ? 'block' : 'none';
+  if(due) document.getElementById('backupReminderText').textContent = age === null
+    ? '💾 Todavía no hiciste ninguna copia de seguridad de tus canciones y listas.'
+    : '💾 Hace '+age+' días que no hacés una copia de seguridad.';
+}
+document.getElementById('backupReminderNow').addEventListener('click', ()=>{ bkSave(); });
+document.getElementById('backupReminderLater').addEventListener('click', ()=>{
+  try{ localStorage.setItem(BK_SNOOZE_KEY, new Date(Date.now() + BK_SNOOZE_DAYS*86400000).toISOString()); }catch(e){}
+  updateBackupUi();
+});
+document.getElementById('backupSaveBtn').addEventListener('click', ()=>{ bkSave(); });
+
+// ----- leer y limpiar una copia -----
+// Todo lo que viene de un archivo se limpia: nada de etiquetas HTML, ids raros ni claves peligrosas.
+function bkClean(s, max){
+  return String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g,' ').replace(/</g,'‹').replace(/>/g,'›').trim().slice(0, max);
+}
+function bkCleanVersions(arr){
+  if(!Array.isArray(arr)) return [];
+  const out = [];
+  arr.forEach(v=>{
+    if(!v || typeof v !== 'object' || !BK_KEY_RE.test(String(v.key))) return;
+    const sections = (Array.isArray(v.sections) ? v.sections : []).slice(0, 60).map(sec=>{
+      if(!Array.isArray(sec)) return null;
+      return [bkClean(sec[0], 60), bkClean(sec[1], 400), (sec[2] == null || sec[2] === '') ? null : bkClean(sec[2], 200)];
+    }).filter(Boolean);
+    out.push({key:String(v.key), sections});
+  });
+  return out;
+}
+function bkCleanSong(s){
+  if(!s || typeof s !== 'object' || !BK_ID_RE.test(String(s.id))) return null;
+  const title = bkClean(s.title, 200), versions = bkCleanVersions(s.versions);
+  if(!title || !versions.length) return null;
+  return {id:String(s.id), title, file:(Array.isArray(s.file) ? s.file.slice(0,10).map(x=>bkClean(x,120)) : []), custom:true, versions, guitarVersions:bkCleanVersions(s.guitarVersions)};
+}
+function bkCleanOverride(v){
+  if(!v || typeof v !== 'object') return null;
+  const title = bkClean(v.title, 200), versions = bkCleanVersions(v.versions);
+  if(!title || !versions.length) return null;
+  return {title, versions, guitarVersions:bkCleanVersions(v.guitarVersions)};
+}
+function bkCleanList(l){
+  if(!l || typeof l !== 'object' || !BK_ID_RE.test(String(l.id))) return null;
+  const name = bkClean(l.name, 80);
+  if(!name) return null;
+  const items = (Array.isArray(l.items) ? l.items : []).slice(0, 300).map(it=>{
+    if(!it || typeof it !== 'object') return null;
+    return {id: BK_ID_RE.test(String(it.id)) ? String(it.id) : '', title: bkClean(it.title, 200), key: BK_KEY_RE.test(String(it.key)) ? String(it.key) : ''};
+  }).filter(it=>it && (it.id || it.title));
+  const t = Date.parse(l.updated);
+  return {id:String(l.id), name, updated:(isNaN(t) ? new Date().toISOString() : new Date(t).toISOString()), items};
+}
+function bkParse(text){
+  if(text.length > 15*1024*1024) throw new Error('el archivo es demasiado grande para ser una copia del cancionero');
+  let data;
+  try{ data = JSON.parse(text); }catch(e){ throw new Error('el archivo no se pudo leer (no es una copia válida)'); }
+  let datos, creado = null;
+  if(Array.isArray(data)) datos = {customSongs:data, overrides:{}, lists:[]};          // formato viejo de "Exportar mis canciones"
+  else if(data && data.tipo === 'cancionero-backup'){
+    if(typeof data.version === 'number' && data.version > 1) throw new Error('esta copia es de una versión más nueva de la app: actualizala primero');
+    datos = (data.datos && typeof data.datos === 'object') ? data.datos : {};
+    creado = data.creado || null;
+  } else throw new Error('ese archivo no es una copia de seguridad del cancionero');
+  let descartadas = 0;
+  const songs = [], seen = new Set();
+  (Array.isArray(datos.customSongs) ? datos.customSongs : []).forEach(s=>{
+    const c = bkCleanSong(s);
+    if(!c || seen.has(c.id)){ descartadas++; return; }
+    seen.add(c.id); songs.push(c);
+  });
+  const ov = {};
+  if(datos.overrides && typeof datos.overrides === 'object' && !Array.isArray(datos.overrides)){
+    Object.keys(datos.overrides).forEach(k=>{
+      const c = (BK_BAD_KEYS.includes(k) || !BK_ID_RE.test(k)) ? null : bkCleanOverride(datos.overrides[k]);
+      if(!c){ descartadas++; return; }
+      ov[k] = c;
+    });
+  }
+  const ls = [], seenL = new Set();
+  (Array.isArray(datos.lists) ? datos.lists : []).forEach(l=>{
+    const c = bkCleanList(l);
+    if(!c || seenL.has(c.id)){ descartadas++; return; }
+    seenL.add(c.id); ls.push(c);
+  });
+  return {customSongs:songs, overrides:ov, lists:ls, descartadas, creado};
+}
+
+// ----- restaurar -----
+let bkPending = null;
+function bkHideRestoreBox(){ bkPending = null; const b = document.getElementById('backupRestoreBox'); b.style.display = 'none'; b.innerHTML = ''; }
+function bkShowRestoreBox(p, fname){
+  bkPending = p;
+  const cur = bkCurrentData();
+  const has = (o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  const nuevas = p.customSongs.filter(s=>!cur.customSongs.some(x=>x.id===s.id)).length;
+  const nuevasEd = Object.keys(p.overrides).filter(k=>!has(cur.overrides,k)).length;
+  const nuevasL = p.lists.filter(l=>!cur.lists.some(x=>x.id===l.id)).length;
+  const box = document.getElementById('backupRestoreBox');
+  box.innerHTML = '';
+  const add = (t, cls)=>{ const d = document.createElement('div'); if(cls) d.className = cls; d.textContent = t; box.appendChild(d); };
+  add('Copia «'+fname+'»'+(p.creado && !isNaN(Date.parse(p.creado)) ? ', creada el '+new Date(p.creado).toLocaleDateString('es-AR') : '')+':');
+  add('• Trae '+bkSummaryText({canciones:p.customSongs.length, ediciones:Object.keys(p.overrides).length, listas:p.lists.length})+'.');
+  add('• "Unir" te agregaría '+bkPlural(nuevas,'canción','canciones')+', '+bkPlural(nuevasEd,'edición','ediciones')+' y '+bkPlural(nuevasL,'lista','listas')+' que hoy no tenés. No pisa nada de lo que ya tenés.');
+  add('• "Reemplazar" deja todo exactamente como en la copia (lo que hoy tenés de más se borra, pero queda el botón para deshacer).');
+  if(p.descartadas) add('Se ignoraron '+bkPlural(p.descartadas,'elemento dañado o no válido','elementos dañados o no válidos')+'.', 'warn');
+  const row = document.createElement('div'); row.className = 'bk-actions';
+  const mk = (txt, cls, fn)=>{ const b = document.createElement('button'); b.type = 'button'; if(cls) b.className = cls; b.textContent = txt; b.addEventListener('click', fn); row.appendChild(b); };
+  mk('Unir con lo que tengo', 'primary', ()=> bkApply('merge'));
+  mk('Reemplazar todo', 'danger', ()=> bkApply('replace'));
+  mk('Cancelar', '', ()=>{ bkHideRestoreBox(); bkMsg('', ''); });
+  box.appendChild(row);
+  box.style.display = 'block';
+}
+function bkAfterChange(){
+  cart = cart.filter(c=>!!findSong(c.id));      // si una canción del cancionero armado ya no existe, se saca
+  renderSongList(); renderLists(); renderCart(); updateBackupUi();
+}
+function bkApply(mode){
+  const p = bkPending;
+  if(!p) return;
+  const cur = bkCurrentData();
+  if(mode === 'replace' && !confirm('Esto deja todo igual que la copia. Lo que hoy tenés de más ('+bkSummaryText(bkCounts(cur))+') se borra, aunque podés deshacerlo después. ¿Seguimos?')) return;
+  try{ localStorage.setItem(BK_UNDO_KEY, JSON.stringify({guardado:new Date().toISOString(), modo:mode, datos:JSON.parse(JSON.stringify(cur))})); }catch(e){}
+  if(mode === 'replace'){
+    customSongs = p.customSongs.map(s=>({...s, custom:true}));
+    overrides = p.overrides;
+    lists = p.lists;
+  } else {
+    p.customSongs.forEach(s=>{ if(!customSongs.some(x=>x.id===s.id)) customSongs.push({...s, custom:true}); });
+    Object.keys(p.overrides).forEach(k=>{ if(!Object.prototype.hasOwnProperty.call(overrides,k)) overrides[k] = p.overrides[k]; });
+    p.lists.forEach(l=>{ if(!lists.some(x=>x.id===l.id)) lists.push(l); });
+  }
+  saveCustom(); saveOverrides(); saveLists();
+  bkHideRestoreBox();
+  bkAfterChange();
+  bkMsg(mode === 'replace' ? 'Listo: todo quedó como en la copia. Si te arrepentís, tocá "Deshacer".' : 'Listo: se agregó lo que faltaba. No se pisó nada.', 'ok');
+}
+function bkUndo(){
+  let snap = null;
+  try{ snap = JSON.parse(localStorage.getItem(BK_UNDO_KEY) || 'null'); }catch(e){}
+  if(!snap || !snap.datos){ updateBackupUi(); return; }
+  customSongs = Array.isArray(snap.datos.customSongs) ? snap.datos.customSongs : [];
+  customSongs.forEach(s=>{ s.custom = true; });
+  overrides = (snap.datos.overrides && typeof snap.datos.overrides === 'object') ? snap.datos.overrides : {};
+  lists = Array.isArray(snap.datos.lists) ? snap.datos.lists : [];
+  saveCustom(); saveOverrides(); saveLists();
+  try{ localStorage.removeItem(BK_UNDO_KEY); }catch(e){}
+  bkHideRestoreBox();
+  bkAfterChange();
+  bkMsg('Listo: volvió todo a como estaba antes de la restauración.', 'ok');
+}
+document.getElementById('backupUndoBtn').addEventListener('click', ()=>{ if(confirm('¿Volver a como estaba antes de la última restauración?')) bkUndo(); });
+document.getElementById('backupRestoreBtn').addEventListener('click', ()=> document.getElementById('backupFile').click());
+document.getElementById('backupFile').addEventListener('change', (e)=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{ const p = bkParse(String(reader.result || '')); bkShowRestoreBox(p, file.name); bkMsg('', ''); }
+    catch(err){ bkHideRestoreBox(); bkMsg('No se pudo restaurar: '+err.message+'.', 'err'); }
+  };
+  reader.onerror = ()=> bkMsg('No se pudo leer el archivo.', 'err');
+  reader.readAsText(file);
+  e.target.value = '';
+});
+document.getElementById('backupToggle').addEventListener('click', ()=>{
+  const b = document.getElementById('backupBody');
+  b.classList.toggle('open');
+  document.getElementById('backupToggleArrow').innerHTML = b.classList.contains('open') ? '&#9650;' : '&#9660;';
+});
+updateBackupUi();
+
+// ---------- teclas del modo en vivo (pedal Bluetooth que actúa como teclado) ----------
+const PEDAL_KEY = 'cancionero_pedal_keys_v1';
+const PEDAL_ACTIONS = [
+  {id:'next', name:'Siguiente canción'},
+  {id:'prev', name:'Canción anterior'},
+  {id:'toneUp', name:'Subir medio tono'},
+  {id:'toneDown', name:'Bajar medio tono'},
+  {id:'toneReset', name:'Volver al tono de la hoja'}
+];
+const PEDAL_DEFAULTS = {
+  next:['ArrowRight','PageDown',' '],
+  prev:['ArrowLeft','PageUp'],
+  toneUp:['ArrowUp','+','='],
+  toneDown:['ArrowDown','-','_'],
+  toneReset:['0']
+};
+const PEDAL_MODIFIERS = ['Shift','Control','Alt','Meta','CapsLock','AltGraph'];
+function pedalDefaults(){ const d = {}; PEDAL_ACTIONS.forEach(a=>{ d[a.id] = PEDAL_DEFAULTS[a.id].slice(); }); return d; }
+function pedalLoad(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(PEDAL_KEY) || 'null');
+    if(raw && typeof raw === 'object' && !Array.isArray(raw)){
+      const out = {};
+      PEDAL_ACTIONS.forEach(a=>{
+        const saved = raw[a.id];
+        const valid = Array.isArray(saved) ? saved.filter(k=>typeof k === 'string' && k.length > 0 && k.length <= 20).slice(0, 8) : [];
+        // una lista vacía la dejó así el usuario (quitó todas las teclas); si había contenido pero ninguno sirve, está dañado: teclas de fábrica
+        out[a.id] = (Array.isArray(saved) && (saved.length === 0 || valid.length > 0)) ? valid : PEDAL_DEFAULTS[a.id].slice();
+      });
+      return out;
+    }
+  }catch(e){}
+  return pedalDefaults();
+}
+let pedalKeys = pedalLoad();
+let pedalCapture = null;                       // mientras se está "aprendiendo" una tecla
+function pedalSave(){ try{ localStorage.setItem(PEDAL_KEY, JSON.stringify(pedalKeys)); }catch(e){} }
+function pedalNorm(k){ return (typeof k === 'string' && k.length === 1) ? k.toLowerCase() : k; }
+function pedalActionFor(e){
+  if(e.ctrlKey || e.metaKey || e.altKey) return null;           // no pisamos atajos del navegador
+  const k = pedalNorm(e.key);
+  for(const a of PEDAL_ACTIONS){ if(pedalKeys[a.id].some(x=>pedalNorm(x) === k)) return a.id; }
+  return null;
+}
+function pedalKeyLabel(k){
+  const m = {' ':'Espacio', ArrowRight:'→', ArrowLeft:'←', ArrowUp:'↑', ArrowDown:'↓', PageDown:'Av Pág', PageUp:'Re Pág', Enter:'Enter', Backspace:'Retroceso', Tab:'Tab', Escape:'Esc'};
+  return m[k] || (k.length === 1 ? k.toUpperCase() : k);
+}
+
+// ----- qué hace cada acción en el modo en vivo -----
+function resetLiveKey(){
+  const item = cart[presentIndex];
+  const song = item ? findSong(item.id) : null;
+  if(song) setLiveKey(song.versions[0].key);
+}
+function runLiveAction(id){
+  if(id === 'next') goToSlide(presentIndex + 1);
+  else if(id === 'prev') goToSlide(presentIndex - 1);
+  else if(id === 'toneUp') shiftLiveKey(1);
+  else if(id === 'toneDown') shiftLiveKey(-1);
+  else if(id === 'toneReset') resetLiveKey();
+}
+function pedalLiveKeydown(e){
+  if(e.key === 'Escape'){ presentOverlay.classList.remove('open'); exitFullscreenIfAny(); releaseWakeLock(); return; }
+  const act = pedalActionFor(e);
+  if(!act) return;
+  e.preventDefault();                     // que las flechas o el espacio no muevan un selector ni aprieten un botón enfocado
+  if(e.repeat) return;                    // un pedal que "repite" no debe saltar varias canciones de golpe
+  runLiveAction(act);
+  const ae = document.activeElement;
+  if(ae && (ae.tagName === 'SELECT' || ae.tagName === 'BUTTON')) ae.blur();
+}
+
+// ----- probador: muestra qué tecla recibe la app (para saber si un pedal sirve) -----
+function pedalTesterShow(e){
+  if(!document.getElementById('pedalBody').classList.contains('open')) return;
+  if(document.getElementById('tabHerramientas').style.display === 'none') return;
+  const t = e.target;
+  if(t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+  if(PEDAL_MODIFIERS.includes(e.key)) return;
+  const act = pedalActionFor(e);
+  const name = act ? PEDAL_ACTIONS.find(a=>a.id === act).name : null;
+  document.getElementById('pedalTester').textContent = 'Recibí: «'+pedalKeyLabel(e.key)+'» (tecla: '+e.key+')'+(name ? ' → '+name : ' → sin acción asignada');
+}
+
+// ----- asignar teclas -----
+function renderPedalRows(){
+  const wrap = document.getElementById('pedalRows');
+  wrap.innerHTML = '';
+  PEDAL_ACTIONS.forEach(a=>{
+    const row = document.createElement('div'); row.className = 'pedal-row';
+    const name = document.createElement('div'); name.className = 'pedal-name'; name.textContent = a.name;
+    const keys = document.createElement('div'); keys.className = 'pedal-keys';
+    if(!pedalKeys[a.id].length) keys.textContent = 'sin teclas';
+    pedalKeys[a.id].forEach((k,i)=>{
+      const chip = document.createElement('span'); chip.className = 'pedal-chip';
+      chip.appendChild(document.createTextNode(pedalKeyLabel(k)));
+      const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+      x.title = 'Quitar esta tecla'; x.setAttribute('data-remove', a.id+':'+i);
+      chip.appendChild(x); keys.appendChild(chip);
+    });
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'pedal-assign';
+    btn.setAttribute('data-assign', a.id);
+    if(pedalCapture && pedalCapture.actionId === a.id){ btn.classList.add('listening'); btn.textContent = 'Pisá el pedal…  (Esc cancela)'; }
+    else btn.textContent = '＋ Asignar tecla';
+    row.appendChild(name); row.appendChild(keys); row.appendChild(btn);
+    wrap.appendChild(row);
+  });
+}
+function pedalCancelCapture(){ pedalCapture = null; renderPedalRows(); }
+function pedalStartCapture(actionId){
+  pedalCapture = {actionId, handle:(e)=>{
+    if(PEDAL_MODIFIERS.includes(e.key) || e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault(); e.stopPropagation();
+    if(e.key === 'Escape'){ pedalCancelCapture(); return; }
+    const nk = pedalNorm(e.key);
+    PEDAL_ACTIONS.forEach(a=>{ pedalKeys[a.id] = pedalKeys[a.id].filter(x=>pedalNorm(x) !== nk); });   // si ya estaba en otra acción, se mueve
+    if(pedalKeys[actionId].length < 8) pedalKeys[actionId].push(nk);
+    pedalSave(); pedalCapture = null; renderPedalRows();
+  }};
+  renderPedalRows();
+}
+document.getElementById('pedalRows').addEventListener('click', (e)=>{
+  const rm = e.target.closest('button[data-remove]');
+  if(rm){
+    const [id, i] = rm.getAttribute('data-remove').split(':');
+    if(pedalKeys[id]){ pedalKeys[id].splice(parseInt(i,10), 1); pedalSave(); renderPedalRows(); }
+    return;
+  }
+  const as = e.target.closest('button[data-assign]');
+  if(as){ pedalStartCapture(as.getAttribute('data-assign')); }
+});
+document.getElementById('pedalResetBtn').addEventListener('click', ()=>{ pedalKeys = pedalDefaults(); pedalSave(); pedalCapture = null; renderPedalRows(); });
+document.getElementById('pedalToggle').addEventListener('click', ()=>{
+  const b = document.getElementById('pedalBody');
+  b.classList.toggle('open');
+  document.getElementById('pedalToggleArrow').innerHTML = b.classList.contains('open') ? '&#9650;' : '&#9660;';
+  if(!b.classList.contains('open')) pedalCancelCapture();
+});
+// un único oyente de teclado para todo lo del pedal (se registra en fase de captura para ganarle a cualquier otro)
+document.addEventListener('keydown', (e)=>{
+  if(pedalCapture){ pedalCapture.handle(e); return; }
+  if(presentOverlay.classList.contains('open')) pedalLiveKeydown(e);
+  else pedalTesterShow(e);
+}, true);
+document.addEventListener('keyup', (e)=>{
+  if(presentOverlay.classList.contains('open') && pedalActionFor(e)) e.preventDefault();   // evita que soltar el espacio "clickee" un botón enfocado
+}, true);
+renderPedalRows();
 
 // ---------- init ----------
 renderSongList();
