@@ -251,19 +251,19 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 }
 .present-slide{
   flex:0 0 100%;width:100%;height:100%;overflow-y:auto;
-  padding:70px 22px 80px;box-sizing:border-box;
+  padding:70px 22px 170px;box-sizing:border-box;
   font-family:var(--prev-font);
   touch-action:pan-y;
 }
 .present-card-title{
-  color:#f3e8d6;font-family:Georgia,serif;font-size:1.7rem;font-weight:bold;
+  color:#f3e8d6;font-family:Georgia,serif;font-size:calc(1.7rem * var(--live-zoom,1));font-weight:bold;
   text-align:center;margin-bottom:4px;
 }
 .present-card-key{
-  color:#d9a55b;text-align:center;font-family:Arial,sans-serif;font-size:0.95rem;margin-bottom:22px;
+  color:#d9a55b;text-align:center;font-family:Arial,sans-serif;font-size:calc(0.95rem * var(--live-zoom,1));margin-bottom:22px;
 }
 .present-section{
-  font-size:calc(var(--prev-size) * 1.6);line-height:1.9;margin:14px 0;color:#f3e8d6;max-width:760px;margin-left:auto;margin-right:auto;
+  font-size:calc(var(--prev-size) * 1.6 * var(--live-zoom,1));line-height:1.9;margin:14px 0;color:#f3e8d6;max-width:760px;margin-left:auto;margin-right:auto;
 }
 .present-label{color:#a3916f;font-style:italic;margin-right:8px;font-size:0.7em;}
 .present-chords{font-family:'Courier New',monospace;font-weight:bold;color:#e0a552;}
@@ -290,8 +290,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .present-dot.active{background:#e0a552;}
 
 #presentGradosPanel{
-  display:none;position:absolute;z-index:9;left:50%;bottom:calc(env(safe-area-inset-bottom) + 66px);
-  transform:translateX(-50%);width:min(320px,92vw);
+  display:none;position:relative;z-index:9;width:min(320px,92vw);
   background:rgba(34,28,22,0.94);border:1px solid rgba(255,255,255,0.15);border-radius:12px;
   padding:8px 10px;box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
@@ -379,6 +378,32 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .empty-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
 .empty-actions a.smallbtn{text-decoration:none;display:inline-block;}
 
+/* ---------- Modo en vivo: barra de tono y tamaño de letra ---------- */
+#liveBottom{
+  position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 30px);z-index:7;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 8px;box-sizing:border-box;
+}
+#liveBottom > *{pointer-events:auto;}
+#liveBar{
+  display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;
+  background:rgba(20,17,16,0.9);border:1px solid rgba(255,255,255,0.14);border-radius:14px;padding:6px 8px;
+}
+.live-group{display:flex;align-items:center;gap:4px;}
+.live-btn{
+  min-width:36px;height:38px;padding:0 8px;border-radius:9px;border:1px solid rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.08);color:#f1e3d1;font-size:0.95rem;font-weight:bold;cursor:pointer;
+}
+.live-btn:active{background:rgba(255,255,255,0.28);}
+#liveZoomReset{min-width:50px;font-size:0.72rem;font-weight:normal;}
+#liveKeySel{
+  height:38px;min-width:64px;border-radius:9px;border:1px solid rgba(255,255,255,0.2);
+  background:#141110;color:#f1e3d1;font-size:0.95rem;font-weight:bold;padding:0 4px;text-align:center;
+}
+#liveSaveList{
+  display:none;padding:8px 14px;border-radius:20px;border:none;background:#e0a552;color:#241f19;
+  font-weight:bold;font-size:0.8rem;cursor:pointer;max-width:92vw;
+}
+
 @page{ size:20cm 30cm; margin:0; }
 @media print{
   html.dark-theme{
@@ -428,9 +453,9 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   .preview-controls label{ justify-content:space-between; }
   .string-btn, .chrom-btn, .grado-btn{ min-width:58px; padding:9px 2px; font-size:0.75rem; }
   .present-navbtn{ width:54px; height:54px; font-size:1.7rem; }
-  .present-slide{ padding:64px 12px 70px; }
-  .present-card-title{ font-size:1.3rem; }
-  .present-section{ font-size:calc(var(--prev-size) * 1.25); }
+  .present-slide{ padding:64px 12px 170px; }
+  .present-card-title{ font-size:calc(1.3rem * var(--live-zoom,1)); }
+  .present-section{ font-size:calc(var(--prev-size) * 1.25 * var(--live-zoom,1)); }
   #zoomCanvas{ width:92vw; padding:16px; }
   .zoom-hint{ font-size:0.68rem; padding:5px 10px; max-width:90vw; text-align:center; white-space:normal; }
   .song-box-head{ flex-wrap:wrap; }
@@ -646,13 +671,29 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
   <button class="present-navbtn" id="presentNext">&#8250;</button>
   <div class="present-dots" id="presentDots"></div>
 
-  <div id="presentGradosPanel">
-    <div id="presentGradosHead">
-      <span>&#127932; Grados de la escala</span>
-      <button class="present-close" id="presentGradosClose">&#10005;</button>
+  <div id="liveBottom">
+    <div id="presentGradosPanel">
+      <div id="presentGradosHead">
+        <span>&#127932; Grados de la escala</span>
+        <button class="present-close" id="presentGradosClose">&#10005;</button>
+      </div>
+      <select id="f_rootnote_live"></select>
+      <div class="grados-row" id="gradosRowLive"></div>
     </div>
-    <select id="f_rootnote_live"></select>
-    <div class="grados-row" id="gradosRowLive"></div>
+    <button type="button" id="liveSaveList"></button>
+    <div id="liveBar">
+      <div class="live-group">
+        <button type="button" class="live-btn" id="liveZoomOut" title="Achicar la letra" aria-label="Achicar la letra">A&minus;</button>
+        <button type="button" class="live-btn" id="liveZoomReset" title="Tamaño normal de la letra">100%</button>
+        <button type="button" class="live-btn" id="liveZoomIn" title="Agrandar la letra" aria-label="Agrandar la letra">A+</button>
+      </div>
+      <div class="live-group">
+        <button type="button" class="live-btn" id="liveKeyDown" title="Bajar medio tono" aria-label="Bajar medio tono">&minus;</button>
+        <select id="liveKeySel" title="Tono de esta canción" aria-label="Tono de esta canción"></select>
+        <button type="button" class="live-btn" id="liveKeyUp" title="Subir medio tono" aria-label="Subir medio tono">+</button>
+        <button type="button" class="live-btn" id="liveKeyReset" title="Volver al tono de la hoja" aria-label="Volver al tono de la hoja">&#8634;</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1960,7 +2001,7 @@ function buildPresentSlideHtml(item){
   }).join('');
   return `<div class="present-slide">
     <div class="present-card-title">${song.title}</div>
-    <div class="present-card-key">Tono ${item.targetKey}</div>
+    <div class="present-card-key">Tono ${item.targetKey}${keyIndex(song.versions[0].key)!==keyIndex(item.targetKey) ? ' · hoja: '+song.versions[0].key : ''}</div>
     ${sectionsHtml}
   </div>`;
 }
@@ -1969,6 +2010,8 @@ function renderPresent(){
   presentTrack.innerHTML = cart.map(buildPresentSlideHtml).join('');
   presentDots.innerHTML = cart.map((_,i)=>`<span class="present-dot${i===presentIndex?' active':''}"></span>`).join('');
   goToSlide(presentIndex, false);
+  syncLiveKey();
+  updateLiveSaveBtn();
 }
 function goToSlide(i, animate){
   if(cart.length===0) return;
@@ -1977,6 +2020,7 @@ function goToSlide(i, animate){
   presentTrack.style.transform = `translateX(${-presentIndex*100}%)`;
   presentCounter.textContent = (presentIndex+1)+' / '+cart.length;
   document.querySelectorAll('.present-dot').forEach((d,idx)=> d.classList.toggle('active', idx===presentIndex));
+  syncLiveKey();
   dbgLog('goToSlide -> pedido='+i+' aplicado='+presentIndex+' transform='+presentTrack.style.transform);
 }
 
@@ -2183,6 +2227,7 @@ function openList(id, goLive){
     newCart.push({id:s.id, targetKey: KEYS.includes(it.key) ? it.key : s.versions[0].key});
   });
   cart = newCart;
+  activeListId = id;
   renderSongList();
   renderCart();
   showTab('buscar', false);
@@ -2743,6 +2788,93 @@ window.addEventListener('online', async ()=>{
   } else {
     for(const k of getPending()){ await cloudPush(k, localValueFor(k)); }
   }
+});
+
+// ---------- modo en vivo: cambiar el tono y agrandar la letra sin salir ----------
+const LIVEZOOM_KEY = 'cancionero_live_zoom_v1';
+let liveZoom = (()=>{ const v = parseFloat(localStorage.getItem(LIVEZOOM_KEY)); return (v >= 0.6 && v <= 3) ? v : 1; })();
+let activeListId = null;           // lista que se abrió por última vez (para ofrecer guardarle los tonos)
+const liveKeySel = document.getElementById('liveKeySel');
+KEYS.forEach(k=>{ const o = document.createElement('option'); o.value = k; o.textContent = k; liveKeySel.appendChild(o); });
+
+function applyLiveZoom(){
+  presentOverlay.style.setProperty('--live-zoom', String(liveZoom));
+  document.getElementById('liveZoomReset').textContent = Math.round(liveZoom*100) + '%';
+  try{ localStorage.setItem(LIVEZOOM_KEY, String(liveZoom)); }catch(e){}
+}
+function setLiveZoom(z){ liveZoom = Math.max(0.6, Math.min(3, Math.round(z*100)/100)); applyLiveZoom(); }
+document.getElementById('liveZoomIn').addEventListener('click', ()=> setLiveZoom(liveZoom * 1.2));
+document.getElementById('liveZoomOut').addEventListener('click', ()=> setLiveZoom(liveZoom / 1.2));
+document.getElementById('liveZoomReset').addEventListener('click', ()=> setLiveZoom(1));
+applyLiveZoom();
+
+// el selector siempre muestra el tono de la canción que se ve en pantalla
+function syncLiveKey(){
+  const item = cart[presentIndex];
+  if(!item) return;
+  liveKeySel.value = KEYS[keyIndex(item.targetKey)];
+}
+// cambia el tono SOLO de la canción actual y rehace solo esa diapositiva (sin perder dónde estabas leyendo)
+function setLiveKey(newKey){
+  const item = cart[presentIndex];
+  if(!item) return;
+  // si el tono pedido equivale a uno que la hoja ya trae (ej: LA# = SIB), se usa tal cual lo guarda la hoja
+  const song = findSong(item.id);
+  const exact = song ? song.versions.find(v=>keyIndex(v.key) === keyIndex(newKey)) : null;
+  if(exact) newKey = exact.key;
+  if(item.targetKey === newKey){ syncLiveKey(); return; }
+  const slide = presentTrack.children[presentIndex];
+  const scroll = slide ? slide.scrollTop : 0;
+  item.targetKey = newKey;
+  if(slide){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = buildPresentSlideHtml(item).trim();
+    const fresh = tmp.firstElementChild;
+    slide.replaceWith(fresh);
+    fresh.scrollTop = scroll;
+  }
+  syncLiveKey();
+  renderCart();                    // el cancionero que está detrás queda con el tono nuevo
+  updateLiveSaveBtn();
+}
+function shiftLiveKey(step){
+  const item = cart[presentIndex];
+  if(!item) return;
+  setLiveKey(KEYS[(keyIndex(item.targetKey) + step + 12) % 12]);
+}
+document.getElementById('liveKeyUp').addEventListener('click', ()=> shiftLiveKey(1));
+document.getElementById('liveKeyDown').addEventListener('click', ()=> shiftLiveKey(-1));
+liveKeySel.addEventListener('change', ()=> setLiveKey(liveKeySel.value));
+document.getElementById('liveKeyReset').addEventListener('click', ()=>{
+  const item = cart[presentIndex];
+  const song = item ? findSong(item.id) : null;
+  if(song) setLiveKey(song.versions[0].key);
+});
+
+// si se abrió una lista y se cambiaron tonos, se ofrece guardarlos en esa lista (solo si las canciones y su orden son las mismas)
+function liveSaveCandidate(){
+  if(!activeListId) return null;
+  const l = lists.find(x=>x.id===activeListId);
+  if(!l) return null;
+  const items = Array.isArray(l.items) ? l.items : [];
+  if(items.length !== cart.length || !items.every((it,i)=> it.id === cart[i].id)) return null;
+  return sameAsCart(items) ? null : l;
+}
+function updateLiveSaveBtn(){
+  const btn = document.getElementById('liveSaveList');
+  const l = liveSaveCandidate();
+  if(l){ btn.textContent = '💾 Guardar tonos en «' + l.name + '»'; btn.style.display = 'block'; }
+  else btn.style.display = 'none';
+}
+document.getElementById('liveSaveList').addEventListener('click', ()=>{
+  const l = liveSaveCandidate();
+  if(!l) return;
+  l.items = cartAsItems();
+  l.updated = new Date().toISOString();
+  saveLists();
+  updateLiveSaveBtn();
+  renderLists();
+  toast('Tonos guardados en la lista «' + l.name + '»');
 });
 
 // ---------- init ----------
