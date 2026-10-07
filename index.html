@@ -977,8 +977,8 @@ function removePending(k){ setPending(getPending().filter(x=>x!==k)); }
 function localValueFor(k){ return k==='customSongs' ? customSongs : (k==='overrides' ? overrides : lists); }
 function localIsEmpty(k){ const v = localValueFor(k); return Array.isArray(v) ? v.length===0 : Object.keys(v || {}).length===0; }
 // si este dispositivo tiene cambios sin subir, se UNEN con los de la nube (lo local gana); si no, manda la nube
-function mergeLocalWithCloud(key, cloudVal){
-  if(!getPending().includes(key)) return cloudVal;
+function mergeLocalWithCloud(key, cloudVal, changedMeanwhile){
+  if(!changedMeanwhile && !getPending().includes(key)) return cloudVal;
   if(key==='overrides') return Object.assign({}, (cloudVal && typeof cloudVal==='object' && !Array.isArray(cloudVal)) ? cloudVal : {}, overrides);
   const byId = new Map();
   (Array.isArray(cloudVal) ? cloudVal : []).forEach(x=>{ if(x && x.id) byId.set(x.id, x); });
@@ -987,6 +987,7 @@ function mergeLocalWithCloud(key, cloudVal){
 }
 async function cloudPull(){
   if(!supabaseClient) return false;
+  const rev0 = {customSongs: pushRev.customSongs||0, overrides: pushRev.overrides||0, lists: pushRev.lists||0};
   try{
     const { data, error } = await supabaseClient.from('cancionero_kv').select('key,value');
     if(error) throw error;
@@ -995,9 +996,10 @@ async function cloudPull(){
     const toPush = [];
     ['customSongs','overrides','lists'].forEach(k=>{
       const cloudHas = (k==='overrides') ? (!!map[k] && typeof map[k]==='object' && !Array.isArray(map[k])) : Array.isArray(map[k]);
-      const needPush = getPending().includes(k) || (!cloudHas && !localIsEmpty(k));
+      const changed = (pushRev[k]||0) !== rev0[k];      // se guardó algo mientras esperábamos la respuesta
+      const needPush = getPending().includes(k) || changed || (!cloudHas && !localIsEmpty(k));
       if(cloudHas){
-        const merged = mergeLocalWithCloud(k, map[k]);
+        const merged = mergeLocalWithCloud(k, map[k], changed);
         if(k==='customSongs') customSongs = merged;
         else if(k==='overrides') overrides = merged;
         else lists = merged;
@@ -1013,18 +1015,30 @@ async function cloudPull(){
     return true;
   }catch(e){ console.warn('cloudPull error', e); return false; }
 }
-async function cloudPush(key, value){
+const pushRev = {}, pushChain = {};
+// Se anota como "pendiente" EN EL MOMENTO de guardar (antes de cualquier espera): así una lectura de la nube
+// que estaba en camino no puede pisar el cambio. Se borra la marca solo cuando la subida confirma y no hubo otro guardado después.
+function cloudPush(key, value){
+  addPending(key);
+  const myRev = pushRev[key] = (pushRev[key] || 0) + 1;
   if(!supabaseClient || !cloudReadOk){
-    addPending(key);
     if(typeof toast === 'function') toast('Guardado solo en este dispositivo: todavía no hay conexión con la nube. Se sube solo cuando se pueda.');
-    return false;
+    return Promise.resolve(false);
   }
-  try{
-    const res = await supabaseClient.from('cancionero_kv').upsert({key, value, updated_at: new Date().toISOString()});
-    if(res && res.error) throw res.error;
-    removePending(key);
-    return true;
-  }catch(e){ addPending(key); console.warn('cloudPush error', e); return false; }
+  const run = async ()=>{
+    try{
+      const res = await supabaseClient.from('cancionero_kv').upsert({key, value: localValueFor(key), updated_at: new Date().toISOString()});
+      if(res && res.error) throw res.error;
+      if(pushRev[key] === myRev) removePending(key);
+      return true;
+    }catch(e){
+      console.warn('cloudPush error', e);
+      if(typeof toast === 'function') toast('No se pudo subir a la nube: queda guardado en este dispositivo y se reintenta.');
+      return false;
+    }
+  };
+  pushChain[key] = (pushChain[key] || Promise.resolve()).then(run, run);   // en orden, de a una por clave
+  return pushChain[key];
 }
 
 // ---------- canciones agregadas por el usuario (localStorage) ----------
@@ -2241,14 +2255,16 @@ async function refreshListsFromCloud(){
     if(ok){ renderSongList(); renderLists(); }
     return;
   }
+  const rev0 = pushRev.lists || 0;
   try{
     const { data, error } = await supabaseClient.from('cancionero_kv').select('key,value').eq('key','lists');
     if(error) throw error;
     const row = (data||[]).find(r=>r.key==='lists');
     if(row && Array.isArray(row.value)){
-      lists = mergeLocalWithCloud('lists', row.value);
+      const changed = (pushRev.lists || 0) !== rev0;     // se guardó una lista mientras esperábamos la respuesta
+      lists = mergeLocalWithCloud('lists', row.value, changed);
       try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
-      if(getPending().includes('lists')) await cloudPush('lists', lists);
+      if(changed || getPending().includes('lists')) await cloudPush('lists', lists);
       renderLists();
     }
   }catch(e){ console.warn('No se pudieron traer las listas de la nube', e); }
@@ -2261,7 +2277,7 @@ renderLists();
 const IMP_NAMES = ['DO','DO#','RE','RE#','MI','FA','FA#','SOL','SOL#','LA','LA#','SI'];
 const IMP_EN_TO_LAT = {C:'DO',D:'RE',E:'MI',F:'FA',G:'SOL',A:'LA',B:'SI'};
 const IMP_LAT_IDX = {DO:0,RE:2,MI:4,FA:5,SOL:7,LA:9,SI:11};
-const IMP_LABEL_RE = /^(intro(?:ducci[oó]n)?|verso|estrofa|pre[\s-]?coro|precoro|coro|estribillo|puente|bridge|final|outro|interludio|instrumental|solo|refr[aã]o|pr[eé][\s-]?refr[aã]o|primeira parte|segunda parte|terceira parte|parte|verse|chorus|pre[\s-]?chorus|ponte|tag|vamp|turnaround|interlude|ending|coda)(?![a-zA-ZáéíóúñÁÉÍÓÚÑ])/i;
+const IMP_LABEL_RE = /^(intro(?:ducci[oó]n)?|verso|estrofa|pre[\s-]?coro|precoro|coro|estribillo|puente|bridge|final|outro|interludio|instrumental|solo|refr[aã]o|pr[eé][\s-]?refr[aã]o|primeira parte|primera parte|segunda parte|terceira parte|tercera parte|parte|verse|chorus|pre[\s-]?chorus|ponte|tag|vamp|turnaround|interlude|ending|coda)(?![a-zA-ZáéíóúñÁÉÍÓÚÑ])/i;
 
 // ----- calidad del acorde (lo que viene después de la nota) -----
 function impParseTail(t){
@@ -2396,9 +2412,9 @@ function impNormLabelPart(p){
   let name = null;
   if(/^intro(duccion)?$/.test(base)) name = 'Intro';
   else if(/^(verso|estrofa|verse)$/.test(base)) name = 'Verso';
-  else if(base==='primeira parte') return 'Verso 1';
+  else if(base==='primeira parte' || base==='primera parte') return 'Verso 1';
   else if(base==='segunda parte') return 'Verso 2';
-  else if(base==='terceira parte') return 'Verso 3';
+  else if(base==='terceira parte' || base==='tercera parte') return 'Verso 3';
   else if(base==='parte') name = 'Parte';
   else if(/^pre ?-?(coro|chorus|refrao)$/.test(base)) name = 'Pre-coro';
   else if(/^(coro|estribillo|chorus|refrao|refrain)$/.test(base)) name = 'Coro';
@@ -2442,7 +2458,7 @@ function impClassify(line){
   if(m && t.length < 40) return {cls:'capo', capo: m[2] ? parseInt(m[2],10) : null};
   if(/^(afinaci[oó]n|ritmo|comp[aá]s|bpm|tempo|autor(?:es)?|artista|int[eé]rprete|letra(?: y m[uú]sica)?|m[uú]sica|[aá]lbum|a[nñ]o|g[eé]nero|dificultad|transcrip\w*|fuente|enviad\w*)\s*[:=]/i.test(t)) return {cls:'meta'};
   if(/^\(?\s*[xX×]\s*\d+\s*\)?$/.test(t) || /^\(?\s*\d+\s*[xX×]\s*\)?$/.test(t)) return {cls:'marker', text:'(x'+t.replace(/\D/g,'')+')'};
-  if(/^\(.*\)$/.test(t) && !impChordLine(t.slice(1,-1))) return {cls:'note'};
+  if(/^\(.*\)$/.test(t)) return {cls:'note'};   // "(Aquí hace arreglo)", "( Em7 D C9 )": indicaciones, no parte de la canción
 
   // [Intro] / [Intro] C G Am
   m = t.match(/^\[([^\]]+)\]\s*(.*)$/);
@@ -2531,13 +2547,13 @@ function impCollapseSummary(lines){
   return mism <= 1 ? [lines[0]] : lines;
 }
 function impCompressLines(lines){
-  let r = lines.filter((l,i)=> i===0 || l.strs.join(' ') !== lines[i-1].strs.join(' '));
-  for(let k=0;k<2;k++){
-    const n = r.length;
-    if(n >= 2 && n % 2 === 0){
-      const a = r.slice(0,n/2).map(l=>l.strs.join(' ')).join('|'), b = r.slice(n/2).map(l=>l.strs.join(' ')).join('|');
-      if(a === b) r = r.slice(0,n/2); else break;
-    }
+  const r = lines.filter((l,i)=> i===0 || l.strs.join(' ') !== lines[i-1].strs.join(' '));
+  const key = l => l.strs.join(' ');
+  const n = r.length;
+  for(let p=1; p<=Math.floor(n/2); p++){          // la unidad más corta que se repite hasta el final
+    let same = true;
+    for(let i=p;i<n;i++){ if(key(r[i]) !== key(r[i % p])){ same = false; break; } }
+    if(same) return r.slice(0,p);
   }
   return r;
 }
@@ -2612,14 +2628,23 @@ function parseChordSheet(raw){
     const sig = impJoinLines(lines2);
     built.push({label:sec.label, unlabeled:sec.unlabeled, sig, chords: sig + (sec.rep ? ' '+sec.rep : ''), lyric: impLyricHint(sec.lyrics)});
   });
-  // repetidas y numeración
-  const kept = [], usedLabel = {};
+  // repetidas: una sección con la misma etiqueta que otra ya cargada no se agrega de nuevo,
+  // aunque los acordes varíen un poco (el coro/estribillo se escribe entero cada vez que se repite).
+  // Solo se conserva, con número, si el contenido es de verdad distinto.
+  const notes = s => new Set((s.match(/(?:DO|RE|MI|FA|SOL|LA|SI)(?:#|B)?(?![A-Z])/g) || []));
+  const similar = (a,b)=>{ const A = notes(a), B = notes(b); let i = 0; A.forEach(x=>{ if(B.has(x)) i++; }); const u = A.size + B.size - i; return u ? i/u : 1; };
+  const kept = [], countByLabel = {};
   built.forEach(b=>{
-    const lab = b.label.toLowerCase();
-    if(kept.some(k=>k.sig===b.sig && (b.unlabeled || k.label.toLowerCase()===lab))){ res.skippedRepeats++; return; }
-    if(!b.unlabeled){
-      usedLabel[lab] = (usedLabel[lab]||0) + 1;
-      if(usedLabel[lab] > 1 && !/\d$/.test(b.label)) b.label = b.label + ' ' + usedLabel[lab];
+    b.origLabel = b.label.toLowerCase();
+    if(b.unlabeled){
+      if(kept.some(k=>k.sig===b.sig)){ res.skippedRepeats++; return; }       // sin etiqueta: solo si es idéntica
+    } else {
+      const prev = kept.find(k=>!k.unlabeled && k.origLabel===b.origLabel);
+      if(prev){
+        if(similar(prev.sig, b.sig) >= 0.5 || /\d$/.test(b.label)){ res.skippedRepeats++; return; }
+        countByLabel[b.origLabel] = (countByLabel[b.origLabel] || 1) + 1;
+        b.label = b.label + ' ' + countByLabel[b.origLabel];
+      }
     }
     kept.push(b);
   });
@@ -2664,7 +2689,7 @@ function renderPasteReport(r){
     const ex = r.simplified.slice(0,4).map(x=>x[0]+' → '+x[1]).join(', ');
     add('Para el bajo dejé solo la nota, sin menores ni extensiones (ej.: '+ex+').');
   }
-  if(r.skippedRepeats) add('Salteé '+r.skippedRepeats+(r.skippedRepeats===1 ? ' sección repetida' : ' secciones repetidas')+' (mismos acordes).');
+  if(r.skippedRepeats) add('Salteé '+r.skippedRepeats+(r.skippedRepeats===1 ? ' sección que se repetía' : ' secciones que se repetían')+': el coro, el verso, etc. quedan una sola vez.');
   const dup = r.title ? allSongs().find(s=>s.title.trim().toLowerCase()===r.title.trim().toLowerCase()) : null;
   if(dup) add('Ojo: ya tenés una canción llamada «'+dup.title+'».', 'rep-warn');
 }
