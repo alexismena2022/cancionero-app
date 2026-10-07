@@ -345,6 +345,27 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .grado-btn:active .notename, .grado-btn.playing .notename{color:#fff;}
 .grado-btn:active .roman, .grado-btn.playing .roman{color:#ddd;}
 
+/* ---------- Listas para eventos ---------- */
+.tab-btn{padding:10px 4px;font-size:0.8rem;}
+#listSaveBox{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;}
+#listSaveBox label{font-size:0.8rem;color:var(--muted);display:block;}
+#listSaveBox input{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--ink);font-size:0.9rem;margin:6px 0 8px;}
+#listSaveInfo{font-size:0.74rem;color:var(--muted);margin-bottom:8px;}
+#saveListBtn{width:100%;padding:10px;border:none;border-radius:8px;background:var(--green);color:#fff;font-weight:bold;font-size:0.9rem;cursor:pointer;}
+#listsEmpty{text-align:center;color:var(--muted);font-size:0.85rem;padding:18px 8px;}
+.list-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+.list-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.list-card-name{font-weight:bold;font-size:1rem;word-break:break-word;}
+.list-card-meta{font-size:0.72rem;color:var(--muted);white-space:nowrap;}
+.list-card-songs{font-size:0.78rem;color:var(--muted);margin:6px 0 10px;line-height:1.55;}
+.list-card-songs .missing{font-style:italic;text-decoration:line-through;}
+.list-actions{display:flex;flex-wrap:wrap;gap:6px;}
+.list-actions button{flex:1 1 auto;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:0.8rem;cursor:pointer;}
+.list-actions button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:bold;}
+.list-actions button.danger{color:#c44;}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#2b2620;color:#f1e3d1;padding:10px 16px;border-radius:20px;font-size:0.85rem;z-index:400;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center;}
+#toast.show{opacity:1;}
+
 @page{ size:20cm 30cm; margin:0; }
 @media print{
   html.dark-theme{
@@ -420,6 +441,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 
     <div id="tabBar">
       <button type="button" class="tab-btn active" data-tab="buscar">&#128269; Buscar</button>
+      <button type="button" class="tab-btn" data-tab="listas">&#128203; Listas</button>
       <button type="button" class="tab-btn" data-tab="herramientas">&#128295; Herramientas</button>
     </div>
 
@@ -427,6 +449,19 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
     <h2>Todas las canciones (tildá para agregar)</h2>
     <div id="list"></div>
     <div id="empty">No se encontró ninguna canción con ese nombre.</div>
+    </div>
+
+    <div id="tabListas" class="tab-panel" style="display:none;">
+      <h2>Listas para eventos</h2>
+      <div class="hint">Armá tu cancionero en la pestaña Buscar, ponele un nombre y guardalo acá. Después lo abrís con un toque, con los mismos tonos y el mismo orden.</div>
+      <div id="listSaveBox">
+        <label for="listName">Guardar el cancionero actual como lista</label>
+        <input type="text" id="listName" placeholder="Ej: Domingo mañana" maxlength="60" autocomplete="off">
+        <div id="listSaveInfo"></div>
+        <button type="button" id="saveListBtn">&#128190; Guardar lista</button>
+      </div>
+      <div id="listsContainer"></div>
+      <div id="listsEmpty">Todavía no guardaste ninguna lista.</div>
     </div>
 
     <div id="tabHerramientas" class="tab-panel" style="display:none;">
@@ -540,6 +575,7 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
     </div>
     <div id="pagewrap"><div id="page"><div class="cart-empty">Todavía no agregaste ninguna canción.<br>Tildá alguna de la lista de la izquierda.</div></div></div>
     <div class="actions">
+      <button class="actbtn" id="gotoSaveListBtn" style="background:#4d6a8a;">&#128203; Guardar como lista</button>
       <button class="actbtn" id="presentOpenBtn" style="background:#3d2f1f;">&#127908; Modo en vivo (cascada)</button>
       <button class="actbtn" id="zoomOpenBtn" style="background:#6b431d;">&#128269; Vista interactiva</button>
       <button class="actbtn" id="printbtn">&#128424;&#65039; Imprimir</button>
@@ -589,6 +625,8 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
     <div class="grados-row" id="gradosRowLive"></div>
   </div>
 </div>
+
+<div id="toast"></div>
 
 <button id="audioDebugBtn" title="Diagnóstico de audio">&#128027;</button>
 <div id="audioDebugPanel">
@@ -907,8 +945,11 @@ async function cloudPull(){
     (data||[]).forEach(r=> map[r.key]=r.value);
     if(map.customSongs){ customSongs = map.customSongs; customSongs.forEach(s=>s.custom=true); }
     if(map.overrides){ overrides = map.overrides; }
+    if(Array.isArray(map.lists)){ lists = map.lists; }
     try{ localStorage.setItem(LS_KEY, JSON.stringify(customSongs)); }catch(e){}
     try{ localStorage.setItem(OV_KEY, JSON.stringify(overrides)); }catch(e){}
+    try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
+    if(!Array.isArray(map.lists) && lists.length) cloudPush('lists', lists);
     return true;
   }catch(e){ console.warn('cloudPull error', e); return false; }
 }
@@ -949,6 +990,20 @@ function saveOverrides(){
   cloudPush('overrides', overrides);
 }
 let overrides = loadOverrides();
+
+// ---------- listas para eventos (guardado local + nube) ----------
+const LISTS_KEY = 'cancionero_lists_v1';
+function loadLists(){
+  try{ const raw = localStorage.getItem(LISTS_KEY); const v = raw ? JSON.parse(raw) : []; return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+let lists = loadLists();
+function saveLists(){
+  try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }
+  catch(e){ alert('No se pudo guardar la lista en este navegador: '+e.message); }
+  cloudPush('lists', lists);
+}
+
 
 function allSongs(){
   const builtinResolved = BUILTIN_SONGS.map(s=>{
@@ -1022,15 +1077,16 @@ function updateCount(v, total){countEl.textContent = v+' de '+total+' canciones'
 searchInput.addEventListener('input', attachSearchFilter);
 
 // ---------- pestañas: Buscar / Herramientas ----------
+function showTab(target, focusSearch){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===target));
+  document.getElementById('tabBuscar').style.display = target==='buscar' ? '' : 'none';
+  document.getElementById('tabListas').style.display = target==='listas' ? '' : 'none';
+  document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
+  if(target==='buscar' && focusSearch) searchInput.focus();
+  if(target==='listas'){ renderLists(); refreshListsFromCloud(); }
+}
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const target = btn.getAttribute('data-tab');
-    document.getElementById('tabBuscar').style.display = target==='buscar' ? '' : 'none';
-    document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
-    if(target==='buscar') searchInput.focus();
-  });
+  btn.addEventListener('click', ()=> showTab(btn.getAttribute('data-tab'), true));
 });
 
 let cart = [];
@@ -1346,16 +1402,27 @@ function openEditForm(id, presetKey){
   }
   const modoLabel = editingIsGuitar ? ' &#127928; (vista guitarra)' : ' &#127925; (vista bajo)';
   document.getElementById('addFormTitle').innerHTML = '&#9998;&#65039; Editando: '+song.title+' &mdash; tono '+key+modoLabel+origNote;
+  showTab('herramientas', false); // el formulario vive en esa pestaña: hay que mostrarla
   addForm.classList.add('open');
   addToggleArrow.innerHTML = '&#9650;';
+  window.scrollTo({top:0, behavior:'smooth'});
   addWrap.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 document.getElementById('cancelSongBtn').addEventListener('click', ()=>{
+  const wasEditing = !!editingId;
   resetForm();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
+  if(wasEditing) showTab('buscar', false);
 });
+
+// Deja cada acorde con el formato que entiende la app: nota en MAYÚSCULA, bemol con B mayúscula
+// y la calidad en minúscula (SIm, MIm7, DO#dim, SIBmaj7). Cualquier otro texto queda como lo escribiste.
+function normalizeChordLine(text){
+  return text.replace(/\b(do|re|mi|fa|sol|la|si)(#|b)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![a-z0-9])/gi,
+    (full, root, acc, qual)=> root.toUpperCase() + (acc ? acc.toUpperCase() : '') + (qual ? qual.toLowerCase() : ''));
+}
 
 function upsertVersion(versionsArr, key, sections){
   const copy = versionsArr.map(v=>({key:v.key, sections:v.sections}));
@@ -1372,7 +1439,7 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
   const sections = [];
   fSections.querySelectorAll('.sec-row').forEach(row=>{
     const label = row.querySelector('.sec-label').value.trim();
-    const chords = row.querySelector('.sec-chords').value.trim().toUpperCase();
+    const chords = normalizeChordLine(row.querySelector('.sec-chords').value.trim());
     const lyric = row.querySelector('.sec-lyric').value.trim();
     if(chords) sections.push([label, chords, lyric || null]);
   });
@@ -1396,11 +1463,13 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
     customSongs.push(newSong);
     saveCustom();
   }
+  const wasEditing = !!editingId;
   resetForm();
   addForm.classList.remove('open');
   addToggleArrow.innerHTML = '&#9660;';
   renderSongList();
   renderCart();
+  if(wasEditing) showTab('buscar', false);
 });
 
 // ---------- exportar / importar backup ----------
@@ -1715,6 +1784,7 @@ document.getElementById('connectSupaBtn').addEventListener('click', async ()=>{
     saveSupaConfig({url, key});
     setCloudStatus('&#9989; Conectado. Sincronizando en este dispositivo.', 'ok');
     renderSongList();
+    renderLists();
     // primera vez: subimos lo que ya teníamos local, por si la nube estaba vacía
     cloudPush('customSongs', customSongs);
     cloudPush('overrides', overrides);
@@ -1928,6 +1998,175 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
   applyTheme(currentTheme);
 });
 
+// ---------- listas para eventos: pantalla y acciones ----------
+const listsContainer = document.getElementById('listsContainer');
+const listsEmpty = document.getElementById('listsEmpty');
+const listNameInput = document.getElementById('listName');
+const listSaveInfo = document.getElementById('listSaveInfo');
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function cartAsItems(){
+  return cart.map(c=>{ const s = findSong(c.id); return {id:c.id, title: s ? s.title : '', key:c.targetKey}; });
+}
+function sameAsCart(items){
+  if(items.length !== cart.length) return false;
+  return items.every((it,i)=> it.id===cart[i].id && it.key===cart[i].targetKey);
+}
+// la canción de un ítem: primero por id; si ya no existe con ese id, por título
+function resolveListItem(it){
+  return findSong(it.id) || allSongs().find(s=>it.title && s.title===it.title) || null;
+}
+function fmtListDate(iso){
+  try{ return new Date(iso).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'}); }catch(e){ return ''; }
+}
+function makeListButton(label, act, cls){
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.setAttribute('data-act', act);
+  if(cls) b.className = cls;
+  b.textContent = label;
+  return b;
+}
+function renderLists(){
+  listSaveInfo.textContent = cart.length
+    ? 'Tu cancionero actual tiene '+cart.length+(cart.length===1?' canción.':' canciones.')
+    : 'Tu cancionero está vacío: tildá canciones en la pestaña Buscar para armarlo.';
+  listsContainer.innerHTML = '';
+  listsEmpty.style.display = lists.length ? 'none' : 'block';
+  const sorted = lists.slice().sort((a,b)=> String(b.updated||'').localeCompare(String(a.updated||'')));
+  sorted.forEach(l=>{
+    const items = Array.isArray(l.items) ? l.items : [];
+    const card = document.createElement('div');
+    card.className = 'list-card';
+    card.setAttribute('data-id', l.id);
+
+    const head = document.createElement('div'); head.className = 'list-card-head';
+    const name = document.createElement('span'); name.className = 'list-card-name'; name.textContent = l.name;
+    const meta = document.createElement('span'); meta.className = 'list-card-meta';
+    meta.textContent = items.length+(items.length===1?' canción':' canciones')+(l.updated ? ' · '+fmtListDate(l.updated) : '');
+    head.appendChild(name); head.appendChild(meta);
+
+    const songs = document.createElement('div'); songs.className = 'list-card-songs';
+    items.forEach((it,i)=>{
+      const s = resolveListItem(it);
+      const sp = document.createElement('span');
+      sp.textContent = (s ? s.title : (it.title || 'canción borrada'))+' ('+it.key+')';
+      if(!s) sp.className = 'missing';
+      songs.appendChild(sp);
+      if(i < items.length-1) songs.appendChild(document.createTextNode(' · '));
+    });
+
+    const actions = document.createElement('div'); actions.className = 'list-actions';
+    actions.appendChild(makeListButton('▶ Abrir','open','primary'));
+    actions.appendChild(makeListButton('🎤 En vivo','live'));
+    actions.appendChild(makeListButton('🔄 Actualizar','update'));
+    actions.appendChild(makeListButton('✏️ Nombre','rename'));
+    actions.appendChild(makeListButton('🗑️','delete','danger'));
+
+    card.appendChild(head); card.appendChild(songs); card.appendChild(actions);
+    listsContainer.appendChild(card);
+  });
+}
+
+function openList(id, goLive){
+  const l = lists.find(x=>x.id===id);
+  if(!l) return;
+  const items = Array.isArray(l.items) ? l.items : [];
+  if(cart.length && !sameAsCart(items) && !confirm('Esto reemplaza el cancionero que tenés armado ahora. ¿Seguimos?')) return;
+  const newCart = [], missing = [];
+  items.forEach(it=>{
+    const s = resolveListItem(it);
+    if(!s){ missing.push(it.title || it.id); return; }
+    if(newCart.find(c=>c.id===s.id)) return;
+    newCart.push({id:s.id, targetKey: KEYS.includes(it.key) ? it.key : s.versions[0].key});
+  });
+  cart = newCart;
+  renderSongList();
+  renderCart();
+  showTab('buscar', false);
+  if(missing.length) alert('Estas canciones de la lista ya no existen y se salteó: '+missing.join(', '));
+  if(!newCart.length){ toast('La lista no tiene canciones disponibles'); return; }
+  if(goLive){ document.getElementById('presentOpenBtn').click(); return; }
+  toast('Lista "'+l.name+'" abierta ('+newCart.length+(newCart.length===1?' canción)':' canciones)'));
+  document.getElementById('colcart').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+document.getElementById('saveListBtn').addEventListener('click', ()=>{
+  const name = listNameInput.value.trim();
+  if(!cart.length){ alert('Primero armá tu cancionero: tildá canciones en la pestaña Buscar.'); return; }
+  if(!name){ alert('Ponele un nombre a la lista (por ejemplo: Domingo mañana).'); listNameInput.focus(); return; }
+  const existing = lists.find(l=>l.name.toLowerCase()===name.toLowerCase());
+  if(existing){
+    if(!confirm('Ya existe una lista llamada "'+existing.name+'". ¿La reemplazo con tu cancionero actual?')) return;
+    existing.items = cartAsItems();
+    existing.updated = new Date().toISOString();
+  } else {
+    lists.push({id:'l'+Date.now()+Math.floor(Math.random()*1000), name, updated:new Date().toISOString(), items:cartAsItems()});
+  }
+  saveLists();
+  listNameInput.value = '';
+  renderLists();
+  toast('Lista "'+name+'" guardada ('+cart.length+(cart.length===1?' canción)':' canciones)'));
+});
+
+listsContainer.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-act]');
+  if(!btn) return;
+  const id = btn.closest('.list-card').getAttribute('data-id');
+  const l = lists.find(x=>x.id===id);
+  if(!l) return;
+  const act = btn.getAttribute('data-act');
+  if(act==='open') openList(id,false);
+  else if(act==='live') openList(id,true);
+  else if(act==='update'){
+    if(!cart.length){ alert('Tu cancionero está vacío: armalo primero en la pestaña Buscar.'); return; }
+    if(!confirm('¿Reemplazo las canciones de "'+l.name+'" por tu cancionero actual?')) return;
+    l.items = cartAsItems();
+    l.updated = new Date().toISOString();
+    saveLists(); renderLists();
+    toast('Lista "'+l.name+'" actualizada');
+  }
+  else if(act==='rename'){
+    const n = prompt('Nuevo nombre para la lista:', l.name);
+    if(n && n.trim()){ l.name = n.trim(); saveLists(); renderLists(); }
+  }
+  else if(act==='delete'){
+    if(confirm('¿Eliminar la lista "'+l.name+'"? Las canciones no se borran.')){
+      lists = lists.filter(x=>x.id!==id);
+      saveLists(); renderLists();
+    }
+  }
+});
+
+// atajo desde el panel del cancionero: ir directo a guardar
+document.getElementById('gotoSaveListBtn').addEventListener('click', ()=>{
+  showTab('listas', false);
+  window.scrollTo({top:0, behavior:'smooth'});
+  listNameInput.focus();
+});
+
+// al entrar a la pestaña Listas, traemos la versión más nueva de la nube (si hay conexión)
+async function refreshListsFromCloud(){
+  if(!supabaseClient) return;
+  try{
+    const { data, error } = await supabaseClient.from('cancionero_kv').select('key,value').eq('key','lists');
+    if(error) throw error;
+    const row = (data||[]).find(r=>r.key==='lists');
+    if(row && Array.isArray(row.value)){
+      lists = row.value;
+      try{ localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); }catch(e){}
+      renderLists();
+    }
+  }catch(e){ console.warn('No se pudieron traer las listas de la nube', e); }
+}
+renderLists();
+
 // ---------- init ----------
 renderSongList();
 (async function initCloud(){
@@ -1949,6 +2188,7 @@ renderSongList();
       saveSupaConfig(cfg);
       setCloudStatus('&#9989; Conectado. Sincronizando en este dispositivo.', 'ok');
       renderSongList();
+      renderLists();
     } else {
       setCloudStatus('No se pudo sincronizar ahora (¿sin internet?). Usando lo guardado en este navegador.', 'err');
     }
