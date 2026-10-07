@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Cancionero - Buscar, Transportar e Imprimir</title>
+<title>Cancionero by Samu Mena</title>
 <link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -87,6 +87,9 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   background:#fff;width:var(--page-w);min-height:var(--page-h);margin:0 auto;padding:0;
   box-shadow:0 3px 16px rgba(0,0,0,0.15);
   font-family:var(--prev-font);font-size:var(--prev-size);
+  /* la hoja es de papel: siempre con los colores del tema claro (como al imprimir), aunque la app esté en tema oscuro */
+  --card:#fff; --ink:#211c17; --muted:#7a7266; --accent:#8a5a2b; --accent-light:#f1e3d1; --border:#e6ddd0; --warn:#a3691f;
+  color:#211c17;
 }
 .cart-empty{color:var(--muted);text-align:center;padding:60px 10px;font-size:0.9rem;font-family:Arial,sans-serif;}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
@@ -182,56 +185,12 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .chrom-btn:active, .chrom-btn.playing{background:var(--ink);color:#fff;animation:tonepulse 1.1s ease-in-out infinite;}
 @keyframes tonepulse{ 0%,100%{opacity:1;} 50%{opacity:0.65;} }
 
-/* ---------- Vista interactiva (lienzo con zoom) ---------- */
-#zoomOverlay{
-  display:none;position:fixed;inset:0;z-index:200;
-  background:
-    radial-gradient(ellipse at top, #3a2f26 0%, #1c1611 70%);
-  overflow:hidden;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  box-sizing:border-box;
-}
-#zoomOverlay.open{display:block;}
-#zoomTopbar{
-  position:absolute;top:env(safe-area-inset-top);left:0;right:0;z-index:5;display:flex;align-items:center;gap:10px;
-  padding:12px 16px;background:linear-gradient(180deg, rgba(0,0,0,.55), transparent);
-}
-#zoomTopbar h3{color:#f1e3d1;margin:0;font-family:Georgia,serif;font-size:1.1rem;flex:1;}
+/* botón "Grados" del modo en vivo */
 .zoom-btn{
   background:rgba(255,255,255,0.12);color:#f1e3d1;border:1px solid rgba(255,255,255,0.25);
   border-radius:8px;padding:8px 12px;font-size:1rem;cursor:pointer;backdrop-filter:blur(4px);
 }
 .zoom-btn:hover{background:rgba(255,255,255,0.22);}
-#zoomClose{background:rgba(200,60,60,0.35);}
-#zoomViewport{position:absolute;inset:0;cursor:grab;touch-action:none;}
-#zoomViewport.dragging{cursor:grabbing;}
-#zoomCanvas{
-  position:absolute;top:50%;left:50%;transform-origin:0 0;
-  display:grid;grid-template-columns:repeat(auto-fit, minmax(280px,1fr));gap:22px;
-  padding:40px;width:900px;
-}
-.zc-card{
-  background:linear-gradient(180deg,#fffdf8,#faf3e6);
-  border-radius:14px;overflow:hidden;box-shadow:0 10px 28px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25);
-  border:1px solid #e7d9bf;transition:transform .15s;
-}
-.zc-head{
-  background:linear-gradient(135deg,#8a5a2b,#6b431d);color:#fff7ea;
-  padding:12px 16px;display:flex;justify-content:space-between;align-items:center;
-  font-family:Georgia,serif;
-}
-.zc-title{font-size:1.15rem;font-weight:bold;}
-.zc-key{font-size:0.78rem;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;}
-.zc-body{padding:14px 18px 18px;}
-.zc-section{font-size:1rem;margin:7px 0;line-height:1.5;}
-.zc-label{color:#a3916f;font-style:italic;margin-right:6px;font-size:0.85em;}
-.zc-chords{font-family:'Courier New',monospace;font-weight:bold;color:#8a5a2b;}
-.zc-lyric{color:#9a8f7d;font-size:0.82em;margin-left:4px;}
-.zoom-hint{
-  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
-  color:#e8dcc4;font-size:0.78rem;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:20px;
-  font-family:Arial,sans-serif;pointer-events:none;
-}
 
 /* Modo presentacion en vivo (cascada, una cancion a la vez) */
 #presentOverlay{
@@ -456,8 +415,6 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   .present-slide{ padding:64px 12px 170px; }
   .present-card-title{ font-size:calc(1.3rem * var(--live-zoom,1)); }
   .present-section{ font-size:calc(var(--prev-size) * 1.25 * var(--live-zoom,1)); }
-  #zoomCanvas{ width:92vw; padding:16px; }
-  .zoom-hint{ font-size:0.68rem; padding:5px 10px; max-width:90vw; text-align:center; white-space:normal; }
   .song-box-head{ flex-wrap:wrap; }
   .box-controls{ width:100%; justify-content:space-between; }
 }
@@ -466,7 +423,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 <body>
 
 <header>
-  <h1>&#127925; Cancionero &mdash; Buscar / Transportar / Imprimir <button id="themeToggle" title="Cambiar tema">&#127769;</button></h1>
+  <h1>&#127925; Cancionero by Samu Mena <button id="themeToggle" title="Cambiar tema">&#127769;</button></h1>
   <div class="searchrow">
     <input type="text" id="search" placeholder="Buscar canción...">
   </div>
@@ -632,7 +589,6 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
     <div class="actions">
       <button class="actbtn" id="gotoSaveListBtn" style="background:#4d6a8a;">&#128203; Guardar como lista</button>
       <button class="actbtn" id="presentOpenBtn" style="background:#3d2f1f;">&#127908; Modo en vivo (cascada)</button>
-      <button class="actbtn" id="zoomOpenBtn" style="background:#6b431d;">&#128269; Vista interactiva</button>
       <button class="actbtn" id="printbtn">&#128424;&#65039; Imprimir</button>
       <button class="actbtn" id="pdfbtn">&#128190; Descargar PDF (20x30, sin márgenes)</button>
       <button class="actbtn" id="clearbtn">Vaciar</button>
@@ -644,20 +600,6 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
   <span class="closebtn" onclick="closeOverlay()">&times;</span>
   <img id="overlay-img" src="" alt="">
   <div class="fname" id="overlay-fname"></div>
-</div>
-
-<div id="zoomOverlay">
-  <div id="zoomTopbar">
-    <h3>&#127925; Tu Cancionero</h3>
-    <button class="zoom-btn" id="zoomOutBtn">&#8722;</button>
-    <button class="zoom-btn" id="zoomResetBtn">100%</button>
-    <button class="zoom-btn" id="zoomInBtn">&#43;</button>
-    <button class="zoom-btn" id="zoomClose">&#10005; Cerrar</button>
-  </div>
-  <div id="zoomViewport">
-    <div id="zoomCanvas"></div>
-  </div>
-  <div class="zoom-hint">Arrastrá para mover &middot; rueda del mouse o pellizcá para zoom &middot; doble clic en una tarjeta para acercar</div>
 </div>
 
 <div id="presentOverlay">
@@ -1410,7 +1352,6 @@ fontsizeSel.addEventListener('change', ()=>{ document.documentElement.style.setP
 document.getElementById('notationMode').addEventListener('change', (e)=>{
   currentNotationMode = e.target.value;
   renderCart();
-  if(typeof zoomOverlay!=='undefined' && zoomOverlay.classList.contains('open')) renderZoomCanvas();
   if(typeof presentOverlay!=='undefined' && presentOverlay.classList.contains('open')) renderPresent();
 });
 
@@ -1757,145 +1698,6 @@ function exitFullscreenIfAny(){
   }
 }
 
-// ---------- Vista interactiva (lienzo con zoom) ----------
-const zoomOverlay = document.getElementById('zoomOverlay');
-const zoomViewport = document.getElementById('zoomViewport');
-const zoomCanvas = document.getElementById('zoomCanvas');
-const zoomResetBtn = document.getElementById('zoomResetBtn');
-let zScale = 1, zPanX = 0, zPanY = 0;
-
-function zUpdateTransform(){
-  zoomCanvas.style.transform = `translate(${zPanX}px, ${zPanY}px) scale(${zScale})`;
-  zoomResetBtn.textContent = Math.round(zScale*100)+'%';
-}
-function zSetZoom(newScale, anchorX, anchorY){
-  newScale = Math.min(4, Math.max(0.35, newScale));
-  if(anchorX!==undefined){
-    // mantener el punto bajo el cursor/dedos fijo al hacer zoom
-    const rect = zoomViewport.getBoundingClientRect();
-    const cx = anchorX - rect.left - rect.width/2;
-    const cy = anchorY - rect.top - rect.height/2;
-    zPanX = cx - (cx - zPanX) * (newScale/zScale);
-    zPanY = cy - (cy - zPanY) * (newScale/zScale);
-  }
-  zScale = newScale;
-  zUpdateTransform();
-}
-
-function buildZoomCardHtml(item){
-  const song = findSong(item.id);
-  if(!song) return '';
-  const resolved = currentNotationMode==='guitarra' ? resolveGuitarVersion(song, item.targetKey) : resolveVersion(song, item.targetKey);
-  let sectionsHtml = resolved.sections.map(sec=>{
-    const [label, chords, lyric] = sec;
-    if(!chords) return '';
-    return `<div class="zc-section">
-      ${label? '<span class="zc-label">'+label+':</span>':''}
-      <span class="zc-chords">${renderChordsHtml(chords)}</span>
-      ${lyric? '<span class="zc-lyric">"'+lyric+'"</span>':''}
-    </div>`;
-  }).join('');
-  return `
-    <div class="zc-card">
-      <div class="zc-head">
-        <span class="zc-title">${song.title}</span>
-        <span class="zc-key">${item.targetKey}</span>
-      </div>
-      <div class="zc-body">${sectionsHtml}</div>
-    </div>`;
-}
-
-function renderZoomCanvas(){
-  if(cart.length===0){
-    zoomCanvas.innerHTML = '<div style="color:#f1e3d1;font-family:Arial,sans-serif;padding:40px;grid-column:1/-1;text-align:center;">Agregá canciones a tu cancionero primero.</div>';
-    return;
-  }
-  zoomCanvas.innerHTML = cart.map(buildZoomCardHtml).join('');
-}
-
-document.getElementById('zoomOpenBtn').addEventListener('click', ()=>{
-  renderZoomCanvas();
-  zScale = 1; zPanX = 0; zPanY = 0;
-  zUpdateTransform();
-  zoomOverlay.classList.add('open');
-  enterFullscreen(zoomOverlay);
-});
-document.getElementById('zoomClose').addEventListener('click', ()=>{
-  zoomOverlay.classList.remove('open');
-  exitFullscreenIfAny();
-});
-document.getElementById('zoomInBtn').addEventListener('click', ()=> zSetZoom(zScale*1.25));
-document.getElementById('zoomOutBtn').addEventListener('click', ()=> zSetZoom(zScale*0.8));
-zoomResetBtn.addEventListener('click', ()=>{ zScale=1; zPanX=0; zPanY=0; zUpdateTransform(); });
-
-// tocar un acorde también dentro del lienzo
-zoomCanvas.addEventListener('click', (e)=>{
-  if(e.target.matches('.chord-tok')){
-    playChordToken(e.target.getAttribute('data-chord'));
-    e.target.classList.add('playing');
-    setTimeout(()=>e.target.classList.remove('playing'), 250);
-  }
-});
-
-// zoom con rueda del mouse (desktop)
-zoomViewport.addEventListener('wheel', (e)=>{
-  e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.12 : 0.89;
-  zSetZoom(zScale*factor, e.clientX, e.clientY);
-}, {passive:false});
-
-// arrastrar para mover (mouse)
-let zDragging = false, zLastX = 0, zLastY = 0;
-zoomViewport.addEventListener('mousedown', (e)=>{
-  if(e.target.matches('.chord-tok')) return;
-  zDragging = true; zLastX = e.clientX; zLastY = e.clientY;
-  zoomViewport.classList.add('dragging');
-});
-window.addEventListener('mousemove', (e)=>{
-  if(!zDragging) return;
-  zPanX += e.clientX - zLastX; zPanY += e.clientY - zLastY;
-  zLastX = e.clientX; zLastY = e.clientY;
-  zUpdateTransform();
-});
-window.addEventListener('mouseup', ()=>{ zDragging=false; zoomViewport.classList.remove('dragging'); });
-
-// doble clic: acercar/alejar una tarjeta
-zoomViewport.addEventListener('dblclick', (e)=>{
-  zSetZoom(zScale < 1.6 ? 2.2 : 1, e.clientX, e.clientY);
-});
-
-// pellizcar para zoom + arrastrar con un dedo (touch)
-let zTouchStartDist = null, zTouchStartScale = 1, zTouchPanStart = null;
-zoomViewport.addEventListener('touchstart', (e)=>{
-  if(e.touches.length===2){
-    const [t1,t2] = e.touches;
-    zTouchStartDist = Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
-    zTouchStartScale = zScale;
-  } else if(e.touches.length===1){
-    zTouchPanStart = {x:e.touches[0].clientX-zPanX, y:e.touches[0].clientY-zPanY};
-  }
-}, {passive:true});
-zoomViewport.addEventListener('touchmove', (e)=>{
-  if(e.touches.length===2 && zTouchStartDist){
-    e.preventDefault();
-    const [t1,t2] = e.touches;
-    const dist = Math.hypot(t2.clientX-t1.clientX, t2.clientY-t1.clientY);
-    const mid = {x:(t1.clientX+t2.clientX)/2, y:(t1.clientY+t2.clientY)/2};
-    zSetZoom(zTouchStartScale * (dist/zTouchStartDist), mid.x, mid.y);
-  } else if(e.touches.length===1 && zTouchPanStart){
-    e.preventDefault();
-    zPanX = e.touches[0].clientX - zTouchPanStart.x;
-    zPanY = e.touches[0].clientY - zTouchPanStart.y;
-    zUpdateTransform();
-  }
-}, {passive:false});
-zoomViewport.addEventListener('touchend', (e)=>{
-  if(e.touches.length===0){ zTouchStartDist=null; zTouchPanStart=null; }
-});
-document.addEventListener('keydown', (e)=>{
-  if(e.key==='Escape' && zoomOverlay.classList.contains('open')){ zoomOverlay.classList.remove('open'); exitFullscreenIfAny(); }
-});
-
 // ---------- panel de sincronización en la nube ----------
 const cloudToggle = document.getElementById('cloudToggle');
 const cloudForm = document.getElementById('cloudForm');
@@ -2040,9 +1842,17 @@ document.getElementById('presentClose').addEventListener('click', ()=>{
 
 // ---------- grados de la escala, accesible sin salir del modo en vivo ----------
 const rootSelLive = document.getElementById('f_rootnote_live');
+// primera opción: seguir el tono de la canción que se ve en pantalla; las otras 12 sirven para elegir una raíz a mano
+const rootAutoOpt = document.createElement('option'); rootAutoOpt.value = 'auto'; rootSelLive.appendChild(rootAutoOpt);
 KEYS.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; rootSelLive.appendChild(o); });
-rootSelLive.value = 'RE';
-renderGradosInto(document.getElementById('gradosRowLive'), 'RE');
+rootSelLive.value = 'auto';
+function renderLiveGrados(){
+  const item = cart[presentIndex];
+  const songKey = item ? KEYS[keyIndex(item.targetKey)] : null;
+  rootAutoOpt.textContent = songKey ? 'Tono de la canción: ' + songKey : 'Tono de la canción';
+  renderGradosInto(document.getElementById('gradosRowLive'), rootSelLive.value==='auto' ? (songKey || 'RE') : rootSelLive.value);
+}
+renderLiveGrados();
 const presentGradosPanel = document.getElementById('presentGradosPanel');
 document.getElementById('presentGradosBtn').addEventListener('click', ()=>{
   presentGradosPanel.classList.toggle('open');
@@ -2050,9 +1860,7 @@ document.getElementById('presentGradosBtn').addEventListener('click', ()=>{
 document.getElementById('presentGradosClose').addEventListener('click', ()=>{
   presentGradosPanel.classList.remove('open');
 });
-rootSelLive.addEventListener('change', ()=>{
-  renderGradosInto(document.getElementById('gradosRowLive'), rootSelLive.value);
-});
+rootSelLive.addEventListener('change', renderLiveGrados);
 document.getElementById('presentPrev').addEventListener('click', ()=> goToSlide(presentIndex-1));
 document.getElementById('presentNext').addEventListener('click', ()=> goToSlide(presentIndex+1));
 document.addEventListener('keydown', (e)=>{
@@ -2813,6 +2621,7 @@ function syncLiveKey(){
   const item = cart[presentIndex];
   if(!item) return;
   liveKeySel.value = KEYS[keyIndex(item.targetKey)];
+  renderLiveGrados();
 }
 // cambia el tono SOLO de la canción actual y rehace solo esa diapositiva (sin perder dónde estabas leyendo)
 function setLiveKey(newKey){
