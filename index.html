@@ -464,6 +464,19 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
   .song-box-head{ flex-wrap:wrap; }
   .box-controls{ width:100%; justify-content:space-between; }
 }
+/* ---------- contraseña para borrar ---------- */
+#pwModal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:16px;}
+#pwModal.open{display:flex;}
+#pwBox{background:var(--card);color:var(--ink);border:1px solid var(--border);border-radius:14px;padding:18px 16px 14px;width:100%;max-width:360px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}
+#pwBox h3{margin:0 0 8px;font-size:1.05rem;color:var(--accent);}
+#pwMsg{font-size:0.9rem;margin:0 0 12px;line-height:1.35;}
+#pwInput{width:100%;box-sizing:border-box;padding:11px 12px;border:2px solid var(--border);border-radius:8px;background:var(--bg);color:var(--ink);font-size:1rem;outline:none;}
+#pwInput:focus{border-color:var(--accent);}
+#pwErr{min-height:1.2em;font-size:0.82rem;color:#c44;margin:6px 0 4px;}
+#pwBtns{display:flex;gap:8px;margin-top:6px;}
+#pwBtns button{flex:1;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--ink);font-size:0.9rem;cursor:pointer;}
+#pwBtns button.danger{background:#b43a3a;border-color:#b43a3a;color:#fff;font-weight:bold;}
+#pwBtns button:disabled{opacity:0.6;cursor:wait;}
 </style>
 </head>
 <body>
@@ -726,6 +739,19 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
   <div class="dbg-title">Diagnóstico de audio</div>
   <div id="audioDebugLog">Tocá un acorde o una cuerda para ver qué pasa acá...</div>
   <button class="dbg-clear" id="audioDebugClear">Limpiar</button>
+</div>
+
+<div id="pwModal" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+  <form id="pwBox" autocomplete="off">
+    <h3 id="pwTitle">&#128274; Confirmá con la contraseña</h3>
+    <p id="pwMsg"></p>
+    <input type="password" id="pwInput" placeholder="Contraseña" autocomplete="current-password">
+    <div id="pwErr"></div>
+    <div id="pwBtns">
+      <button type="button" id="pwCancel">Cancelar</button>
+      <button type="submit" id="pwOk" class="danger">Confirmar</button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -1105,6 +1131,81 @@ function cloudPush(key, value){
   return pushChain[key];
 }
 
+// ---------- contraseña para borrar ----------
+// La contraseña NO está en este archivo: vive hasheada en Supabase (tabla privada cancionero_admin)
+// y la app solo pregunta "¿es esta?" a la función verificar_clave_borrado. Ver README para crearla o cambiarla.
+// Después de acertarla, por 10 minutos solo pide confirmar (sin volver a escribirla). Eso vive en memoria: al recargar se vuelve a pedir.
+const CLAVE_GRACIA_MS = 10 * 60 * 1000;
+let claveOkHasta = 0;
+let pwVerifyClient = null;
+function clienteParaClave(){
+  if(supabaseClient) return supabaseClient;
+  // aunque alguien haya desconectado la sincronización, el borrado sigue protegido contra la base del equipo
+  if(!pwVerifyClient){ try{ pwVerifyClient = supabase.createClient(DEFAULT_SUPA_URL, DEFAULT_SUPA_KEY); }catch(e){} }
+  return pwVerifyClient;
+}
+async function verificarClaveBorrado(clave){
+  if(!navigator.onLine) return {ok:false, msg:'Sin internet no se puede verificar la contraseña. Probá de nuevo cuando haya conexión.'};
+  const client = clienteParaClave();
+  if(!client) return {ok:false, msg:'No se pudo conectar con la base de datos para verificar la contraseña.'};
+  try{
+    const timeout = new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), 10000));
+    const { data, error } = await Promise.race([client.rpc('verificar_clave_borrado', {clave}), timeout]);
+    if(error){
+      if(error.code === 'PGRST202' || /verificar_clave_borrado/.test(error.message||'')) return {ok:false, msg:'Todavía no hay una contraseña configurada en Supabase (ver README).'};
+      throw error;
+    }
+    return data === true ? {ok:true} : {ok:false, msg:'Contraseña incorrecta.'};
+  }catch(e){
+    console.warn('verificarClaveBorrado', e);
+    return {ok:false, msg: e && e.message==='timeout' ? 'La verificación tardó demasiado. Revisá la conexión y probá de nuevo.' : 'No se pudo verificar la contraseña ahora. Probá de nuevo.'};
+  }
+}
+// Reemplaza a confirm() en todo lo que borra o pisa datos. Devuelve una promesa true/false.
+function pedirClaveBorrado(mensaje){
+  if(Date.now() < claveOkHasta) return Promise.resolve(confirm(mensaje));
+  const modal = document.getElementById('pwModal');
+  const form = document.getElementById('pwBox');
+  const input = document.getElementById('pwInput');
+  const err = document.getElementById('pwErr');
+  const okBtn = document.getElementById('pwOk');
+  const cancelBtn = document.getElementById('pwCancel');
+  document.getElementById('pwMsg').textContent = mensaje;
+  input.value = ''; err.textContent = '';
+  okBtn.disabled = false; okBtn.textContent = 'Confirmar';
+  modal.classList.add('open');
+  setTimeout(()=> input.focus(), 50);
+  return new Promise(resolve=>{
+    let busy = false;
+    const close = (result)=>{
+      modal.classList.remove('open');
+      form.removeEventListener('submit', onSubmit);
+      cancelBtn.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey, true);
+      resolve(result);
+    };
+    const onCancel = ()=>{ if(!busy) close(false); };
+    const onBackdrop = (e)=>{ if(e.target === modal) onCancel(); };
+    const onKey = (e)=>{ if(e.key === 'Escape'){ e.stopPropagation(); onCancel(); } };
+    const onSubmit = async (e)=>{
+      e.preventDefault();
+      if(busy) return;
+      const clave = input.value;
+      if(!clave){ err.textContent = 'Escribí la contraseña.'; input.focus(); return; }
+      busy = true; okBtn.disabled = true; okBtn.textContent = 'Verificando…'; err.textContent = '';
+      const r = await verificarClaveBorrado(clave);
+      busy = false; okBtn.disabled = false; okBtn.textContent = 'Confirmar';
+      if(r.ok){ claveOkHasta = Date.now() + CLAVE_GRACIA_MS; close(true); }
+      else { err.textContent = r.msg; input.value = ''; input.focus(); }
+    };
+    form.addEventListener('submit', onSubmit);
+    cancelBtn.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey, true);
+  });
+}
+
 // ---------- canciones agregadas por el usuario (localStorage) ----------
 const LS_KEY = 'cancionero_custom_songs_v1';
 function loadCustom(){
@@ -1270,10 +1371,11 @@ listEl.addEventListener('change', (e)=>{
     if(e.target.checked) addToCart(id); else removeFromCart(id);
   }
 });
-listEl.addEventListener('click', (e)=>{
+listEl.addEventListener('click', async (e)=>{
   if(e.target.matches('.del-custom')){
     const id = e.target.getAttribute('data-id');
-    if(confirm('¿Eliminar esta canción de tu lista?')){
+    const s = customSongs.find(x=>x.id===id);
+    if(await pedirClaveBorrado('¿Eliminar la canción "'+(s ? s.title : '')+'"? Se borra para todo el equipo.')){
       customSongs = customSongs.filter(s=>s.id!==id);
       saveCustom();
       removeFromCart(id);
@@ -1285,7 +1387,7 @@ listEl.addEventListener('click', (e)=>{
   }
   if(e.target.matches('.restore-song')){
     const id = e.target.getAttribute('data-id');
-    if(confirm('¿Volver esta canción a como estaba originalmente? Se pierde tu edición.')){
+    if(await pedirClaveBorrado('¿Volver esta canción a como estaba originalmente? Se pierde la edición para todo el equipo.')){
       delete overrides[id];
       saveOverrides();
       renderSongList();
@@ -2144,7 +2246,7 @@ document.getElementById('saveListBtn').addEventListener('click', ()=>{
   toast('Lista "'+name+'" guardada ('+cart.length+(cart.length===1?' canción)':' canciones)'));
 });
 
-listsContainer.addEventListener('click', (e)=>{
+listsContainer.addEventListener('click', async (e)=>{
   const btn = e.target.closest('button[data-act]');
   if(!btn) return;
   const id = btn.closest('.list-card').getAttribute('data-id');
@@ -2166,7 +2268,7 @@ listsContainer.addEventListener('click', (e)=>{
     if(n && n.trim()){ l.name = n.trim(); saveLists(); renderLists(); }
   }
   else if(act==='delete'){
-    if(confirm('¿Eliminar la lista "'+l.name+'"? Las canciones no se borran.')){
+    if(await pedirClaveBorrado('¿Eliminar la lista "'+l.name+'"? Las canciones no se borran.')){
       lists = lists.filter(x=>x.id!==id);
       saveLists(); renderLists();
     }
@@ -2968,11 +3070,11 @@ function bkAfterChange(){
   cart = cart.filter(c=>!!findSong(c.id));      // si una canción del cancionero armado ya no existe, se saca
   renderSongList(); renderLists(); renderCart(); updateBackupUi();
 }
-function bkApply(mode){
+async function bkApply(mode){
   const p = bkPending;
   if(!p) return;
   const cur = bkCurrentData();
-  if(mode === 'replace' && !confirm('Esto deja todo igual que la copia. Lo que hoy tenés de más ('+bkSummaryText(bkCounts(cur))+') se borra, aunque podés deshacerlo después. ¿Seguimos?')) return;
+  if(mode === 'replace' && !(await pedirClaveBorrado('Esto deja todo igual que la copia. Lo que hoy tenés de más ('+bkSummaryText(bkCounts(cur))+') se borra, aunque podés deshacerlo después. ¿Seguimos?'))) return;
   try{ localStorage.setItem(BK_UNDO_KEY, JSON.stringify({guardado:new Date().toISOString(), modo:mode, datos:JSON.parse(JSON.stringify(cur))})); }catch(e){}
   if(mode === 'replace'){
     customSongs = p.customSongs.map(s=>({...s, custom:true}));

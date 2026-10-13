@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cancionero-cache-v14';
+const CACHE_NAME = 'cancionero-cache-v15';
 const CORE_URL = './index.html';
 
 self.addEventListener('install', (event) => {
