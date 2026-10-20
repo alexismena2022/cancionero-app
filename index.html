@@ -103,7 +103,12 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   display:flex;align-items:center;justify-content:space-between;gap:6px;
   border-bottom:2px solid var(--ink);padding:4px 8px;background:#fafafa;
 }
-.drag-handle{color:#bbb;font-size:0.9em;margin-right:4px;user-select:none;}
+.drag-handle{color:#bbb;font-size:1.05em;margin-right:2px;padding:6px 8px 6px 2px;user-select:none;-webkit-user-select:none;touch-action:none;cursor:grab;}
+.move-btns{display:inline-flex;gap:2px;margin-right:4px;}
+.move-btn{width:30px;height:30px;padding:0;border-radius:7px;border:1px solid var(--border);background:var(--accent-light);color:var(--accent);font-size:0.8rem;cursor:pointer;touch-action:manipulation;}
+.move-btn:disabled{opacity:0.3;cursor:default;}
+.song-box.just-moved{animation:justmoved .9s ease;}
+@keyframes justmoved{0%{box-shadow:0 0 0 3px var(--accent);}100%{box-shadow:0 0 0 0 transparent;}}
 .song-box-title{font-weight:bold;font-size:1.05em;flex:1;}
 .song-box-body{padding:6px 8px 10px;}
 .section-line{font-size:0.92em;margin:3px 0;}
@@ -420,7 +425,7 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
   #colcart{width:100%;}
   #pagewrap{overflow:visible;padding:0;}
   #page{box-shadow:none;margin:0;padding:0;}
-  .removebtn, .keysel, .orig-btn, .drag-handle{display:none !important;}
+  .removebtn, .keysel, .orig-btn, .drag-handle, .move-btns{display:none !important;}
   .song-box{page-break-inside:avoid;cursor:default;}
   body{background:#fff;}
 }
@@ -464,6 +469,11 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
   .song-box-head{ flex-wrap:wrap; }
   .box-controls{ width:100%; justify-content:space-between; }
 }
+/* ---------- modo en vivo: que el navegador no haga zoom solo ---------- */
+#presentOverlay{touch-action:pan-y;}
+#presentOverlay button, #presentOverlay select, #presentOverlay .chord-tok{touch-action:manipulation;}
+/* iPhone hace zoom automático al tocar un selector con letra menor a 16px */
+#presentOverlay select, #presentOverlay input{font-size:16px !important;}
 /* ---------- contraseña para borrar ---------- */
 #pwModal{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;padding:16px;}
 #pwModal.open{display:flex;}
@@ -651,7 +661,7 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
 
   <div id="colcart">
     <h2>Vista previa &mdash; hoja 20 x 30 cm, sin márgenes</h2>
-    <div class="hint">&#9993;&#65039; Arrastrá los cuadros para reordenarlos antes de imprimir/exportar.</div>
+    <div class="hint">&#9993;&#65039; Para cambiar el orden usá ▲ ▼ o arrastrá desde ☰ (también en el celular).</div>
     <div class="preview-controls">
       <label>Letra:
         <select id="fontfamily">
@@ -1432,7 +1442,11 @@ function buildBoxHtml(item){
   return `
     <div class="song-box" draggable="true" data-id="${item.id}">
       <div class="song-box-head">
-        <span class="drag-handle">&#9776;</span>
+        <span class="drag-handle" title="Arrastrá para mover">&#9776;</span>
+        <span class="move-btns">
+          <button type="button" class="move-btn" data-dir="-1" data-id="${item.id}" title="Subir" ${cart[0] && cart[0].id===item.id ? 'disabled' : ''}>&#9650;</button>
+          <button type="button" class="move-btn" data-dir="1" data-id="${item.id}" title="Bajar" ${cart.length && cart[cart.length-1].id===item.id ? 'disabled' : ''}>&#9660;</button>
+        </span>
         <span class="song-box-title">${song.title}</span>
         <div class="box-controls">
           ${badge}
@@ -1461,7 +1475,28 @@ function renderCart(){
   pageEl.appendChild(grid);
 }
 
+function moveCartItem(id, toPos){
+  const fromPos = cart.findIndex(c=>c.id===id);
+  if(fromPos<0) return;
+  toPos = Math.max(0, Math.min(cart.length-1, toPos));
+  if(toPos===fromPos) return;
+  const [moved] = cart.splice(fromPos,1);
+  cart.splice(toPos,0,moved);
+  renderCart();
+  const box = pageEl.querySelector('.song-box[data-id="'+(window.CSS && CSS.escape ? CSS.escape(id) : id)+'"]');
+  if(box){
+    box.classList.add('just-moved');
+    const r = box.getBoundingClientRect();
+    if(r.top < 80 || r.bottom > window.innerHeight) box.scrollIntoView({block:'center', behavior:'smooth'});
+  }
+}
 pageEl.addEventListener('click', (e)=>{
+  const mv = e.target.closest('.move-btn');
+  if(mv){
+    const id = mv.getAttribute('data-id');
+    moveCartItem(id, cart.findIndex(c=>c.id===id) + Number(mv.getAttribute('data-dir')));
+    return;
+  }
   if(e.target.matches('.removebtn')){
     removeFromCart(e.target.getAttribute('data-id'));
   }
@@ -1527,6 +1562,51 @@ pageEl.addEventListener('drop', (e)=>{
   draggedId = null;
   renderCart();
 });
+// en el teléfono el arrastre nativo no funciona: arrastrar con el dedo desde el ☰
+let touchDrag = null, touchDragScroll = 0;
+pageEl.addEventListener('pointerdown', (e)=>{
+  if(e.pointerType === 'mouse') return;              // con mouse sigue el arrastre de siempre
+  const h = e.target.closest('.drag-handle');
+  if(!h) return;
+  const box = h.closest('.song-box');
+  if(!box) return;
+  e.preventDefault();
+  touchDrag = {id: box.getAttribute('data-id'), box, overId: null, pointerId: e.pointerId, y: e.clientY};
+  try{ h.setPointerCapture(e.pointerId); }catch(err){}
+  box.classList.add('dragging');
+  if(navigator.vibrate) try{ navigator.vibrate(15); }catch(err){}
+  const tick = ()=>{                                  // si el dedo está cerca del borde, la página se desplaza sola
+    if(!touchDrag) return;
+    const hdr = document.querySelector('header');
+    const topLimit = hdr ? hdr.getBoundingClientRect().bottom : 0;   // el encabezado queda fijo arriba
+    const pr = pageEl.getBoundingClientRect();
+    const edge = 70;
+    if(touchDrag.y < topLimit + edge && pr.top < topLimit) window.scrollBy(0, -10);                       // sin pasarse del principio del cancionero
+    else if(touchDrag.y > window.innerHeight - edge && pr.bottom > window.innerHeight) window.scrollBy(0, 10);
+    touchDragScroll = requestAnimationFrame(tick);
+  };
+  touchDragScroll = requestAnimationFrame(tick);
+});
+pageEl.addEventListener('pointermove', (e)=>{
+  if(!touchDrag || e.pointerId !== touchDrag.pointerId) return;
+  e.preventDefault();
+  touchDrag.y = e.clientY;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const over = el && el.closest('.song-box');
+  document.querySelectorAll('.song-box.dragover').forEach(b=>{ if(b!==over) b.classList.remove('dragover'); });
+  if(over && over !== touchDrag.box){ over.classList.add('dragover'); touchDrag.overId = over.getAttribute('data-id'); }
+  else touchDrag.overId = null;
+});
+function endTouchDrag(commit){
+  if(!touchDrag) return;
+  cancelAnimationFrame(touchDragScroll);
+  const d = touchDrag; touchDrag = null;
+  d.box.classList.remove('dragging');
+  document.querySelectorAll('.song-box.dragover').forEach(b=>b.classList.remove('dragover'));
+  if(commit && d.overId) moveCartItem(d.id, cart.findIndex(c=>c.id===d.overId));
+}
+pageEl.addEventListener('pointerup', (e)=>{ if(touchDrag && e.pointerId===touchDrag.pointerId) endTouchDrag(true); });
+pageEl.addEventListener('pointercancel', (e)=>{ if(touchDrag && e.pointerId===touchDrag.pointerId) endTouchDrag(false); });
 
 function closeOverlay(){document.getElementById('overlay').classList.remove('open');}
 document.getElementById('overlay').addEventListener('click',(e)=>{if(e.target.id==='overlay') closeOverlay();});
@@ -2026,6 +2106,29 @@ document.getElementById('presentClose').addEventListener('click', ()=>{
   exitFullscreenIfAny();
   releaseWakeLock();
 });
+
+// En el vivo, un doble toque rápido en "siguiente" o un pellizco hacían zoom del navegador y costaba volver.
+// Mientras el modo en vivo está abierto, se bloquea el zoom de la página (el tamaño de letra se cambia con A− / A+).
+// Al entrar también vuelve el zoom a 100% por si ya estaba agrandada.
+const viewportMeta = document.querySelector('meta[name=viewport]');
+const VIEWPORT_NORMAL = viewportMeta ? viewportMeta.getAttribute('content') : '';
+const VIEWPORT_LIVE = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+function setLiveZoomLock(on){
+  if(viewportMeta) viewportMeta.setAttribute('content', on ? VIEWPORT_LIVE : VIEWPORT_NORMAL);
+}
+new MutationObserver(()=> setLiveZoomLock(presentOverlay.classList.contains('open')))
+  .observe(presentOverlay, {attributes:true, attributeFilter:['class']});
+// Safari (iPhone) ignora user-scalable=no: frenamos el pellizco a mano
+['gesturestart','gesturechange'].forEach(ev=> document.addEventListener(ev, (e)=>{
+  if(presentOverlay.classList.contains('open')) e.preventDefault();
+}, {passive:false}));
+// y el doble toque: si dos toques caen muy seguidos sobre algo que no es un botón, se cancela el zoom
+let lastLiveTouchEnd = 0;
+presentOverlay.addEventListener('touchend', (e)=>{
+  const now = Date.now();
+  if(now - lastLiveTouchEnd < 350 && !e.target.closest('button, select, input, .chord-tok')) e.preventDefault();
+  lastLiveTouchEnd = now;
+}, {passive:false});
 
 // ---------- grados de la escala, accesible sin salir del modo en vivo ----------
 const rootSelLive = document.getElementById('f_rootnote_live');
