@@ -2696,13 +2696,25 @@ function impCompressLines(lines){
   return r;
 }
 
+// Al copiar desde una página (sobre todo en iPhone) se cuelan caracteres invisibles: saltos de línea "especiales" (U+2028),
+// espacios de ancho cero, espacios raros o los símbolos ♯ ♭. Se pasan a texto común antes de leer la hoja.
+function impCleanText(raw){
+  return String(raw||'')
+    .replace(/\r\n?/g,'\n')
+    .replace(/[\u2028\u2029\u0085\v\f]/g,'\n')
+    .replace(/[\u200B-\u200D\u2060\uFEFF\u00AD]/g,'')
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g,' ')
+    .replace(/\u266F/g,'#').replace(/\u266D/g,'b');
+}
 function parseChordSheet(raw){
   const res = {title:'', key:null, keySource:'', keyNote:'', capo:null, sections:[], simplified:[], skippedRepeats:0, droppedEmpty:0, chordCount:0};
-  const lines = String(raw||'').replace(/\r\n?/g,'\n').replace(/\u00a0/g,' ').replace(/\t/g,'    ')
+  const lines = impCleanText(raw).replace(/\t/g,'    ')
     .split('\n').map(l=>l.replace(/\s+$/,'')).filter(l=>!/^\s*```/.test(l));
   const items = lines.map((l,i)=>{ const c = impClassify(l); c.i = i; return c; });
 
   let headerZone = true, titleRaw = null, explicitKey = null, cur = null, prevBlank = true;
+  // una línea suelta como "Jesús en lo alto estás" solo se toma como nombre de sección si la hoja ya usa etiquetas (Coro, Verso…)
+  const usesLabels = items.some(x=> x.cls==='label' || x.cls==='labelchords');
   const sections = [], allChords = [];
   const startSection = (label, unlabeled)=>{ cur = {label, unlabeled:!!unlabeled, chordLines:[], lyrics:[], rep:''}; sections.push(cur); };
   const addChordLine = (tokens, summary)=>{
@@ -2734,7 +2746,7 @@ function parseChordSheet(raw){
       case 'marker': if(cur) cur.rep = it.text; break;
       case 'text':
         if(headerZone){ if(titleRaw===null) titleRaw = it.text; break; }
-        if(prevBlank && impLooksLikeLabel(it.text) && nextIsChords(i)){ startSection(impNormLabel(it.text), false); break; }
+        if(usesLabels && prevBlank && impLooksLikeLabel(it.text) && nextIsChords(i)){ startSection(impNormLabel(it.text), false); break; }
         if(cur) cur.lyrics.push(it.text);
         break;
       case 'label': headerZone = false; startSection(impNormLabel(it.label), false); if(it.lyric) cur.lyrics.push(it.lyric); break;
@@ -2836,6 +2848,12 @@ document.getElementById('pasteConvertBtn').addEventListener('click', ()=>{
   if(!pasteText.value.trim()){ alert('Pegá primero el texto de la canción en el cuadro.'); return; }
   const r = parseChordSheet(pasteText.value);
   renderPasteReport(r);
+  if(!r.sections.length){
+    // para el panel de diagnóstico: qué caracteres raros traía el texto
+    const odd = {};
+    for(const ch of pasteText.value){ const c = ch.codePointAt(0); if(c > 126 && !/[À-ÿ¡¿ñÑ]/.test(ch)) odd['U+'+c.toString(16).toUpperCase().padStart(4,'0')] = (odd['U+'+c.toString(16).toUpperCase().padStart(4,'0')]||0)+1; }
+    dbgLog('Pegar canción: sin acordes. Líneas: '+pasteText.value.split(/\n/).length+'. Caracteres especiales: '+(Object.keys(odd).length ? Object.entries(odd).map(([k,n])=>k+'×'+n).join(', ') : 'ninguno'));
+  }
   if(!r.sections.length) return;           // si no se pudo armar nada, no tocamos el formulario
   const prevTitle = document.getElementById('f_title').value.trim();
   resetForm();                              // sale del modo edición: esto es una canción nueva
