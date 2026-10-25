@@ -787,17 +787,36 @@ function keyIndex(k){
   if(m[2]==='B') idx-=1;
   return ((idx%12)+12)%12;
 }
+// ---------- reconocer acordes en las dos notaciones ----------
+// Latina (DO RE MI… con B mayúscula para bemol) y americana (C D E… con b minúscula para bemol: "D", "F#M", "Bb").
+// Cada acorde se transpone y se muestra en la misma notación en que se escribió.
+const AM_IDX = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+const AM_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const AM_FLAT  = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+// el primer grupo es el carácter anterior (o el principio): evita tomar la "A" de "LA" o la "B" de "SIB"
+const CHORD_SCAN_RE = /(^|[^A-Za-zÁÉÍÓÚáéíóúÑñ#])(?:(DO|RE|MI|FA|SOL|LA|SI)(#|B)?|([A-G])(#|b)?)(maj7|sus4|sus2|dim|m7|m|M|7|11)?(?![A-Za-z])/g;
+function mapChords(line, fn){
+  return line.replace(CHORD_SCAN_RE, (full, pre, lat, latAcc, am, amAcc, qual)=>{
+    const american = !!am;
+    const acc = american ? amAcc : latAcc;
+    let idx = american ? AM_IDX[am] : ROOT_IDX[lat];
+    if(acc==='#') idx += 1;
+    else if(acc==='B' || acc==='b') idx -= 1;
+    idx = ((idx%12)+12)%12;
+    const tok = full.slice(pre.length);
+    const out = fn({idx, qual: qual||'', american, tok, pre});
+    return pre + (out===undefined ? tok : out);
+  });
+}
+function chordName(idx, american, useFlats){
+  idx = ((idx%12)+12)%12;
+  if(american) return (useFlats ? AM_FLAT : AM_SHARP)[idx];
+  return (useFlats ? FLAT_NAMES : SHARP_NAMES)[idx];
+}
 function transposeLine(line, shift, useFlats){
   if(!line) return line;
   if(shift===0) return line;
-  return line.replace(/\b(DO|RE|MI|FA|SOL|LA|SI)(#|B)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![A-Za-z])/g, (match, root, acc, qual)=>{
-    let idx = ROOT_IDX[root];
-    if(acc==='#') idx+=1;
-    if(acc==='B') idx-=1;
-    idx = (((idx+shift)%12)+12)%12;
-    const name = useFlats ? FLAT_NAMES[idx] : SHARP_NAMES[idx];
-    return name + (qual||'');
-  });
+  return mapChords(line, c=> chordName(c.idx + shift, c.american, useFlats) + c.qual);
 }
 function resolveVersion(song, targetKey){
   const exact = song.versions.find(v=>v.key===targetKey);
@@ -819,18 +838,14 @@ function resolveVersion(song, targetKey){
 // Nunca toca los datos de bajo: solo calcula qué mostrar, aparte.
 function autoGuitarChords(line, songKeyIdx){
   if(!line) return line;
-  return line.replace(/\b(DO|RE|MI|FA|SOL|LA|SI)(#|B)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![A-Za-z])/g, (full, root, acc, qual, offset, str)=>{
-    if(qual) return full; // ya venía con calidad explícita (ej "REm", "SOL7"): no tocar
-    if(offset > 0 && str.charAt(offset-1) === '/') return full; // es el bajo de un acorde con barra (SOL/SI): no es otro acorde
-    let idx = ROOT_IDX[root];
-    if(acc==='#') idx+=1;
-    if(acc==='B') idx-=1;
-    idx = ((idx%12)+12)%12;
+  return mapChords(line, c=>{
+    if(c.qual) return c.tok; // ya venía con calidad explícita (ej "REm", "SOL7", "F#M"): no tocar
+    if(c.pre === '/') return c.tok; // es el bajo de un acorde con barra (SOL/SI): no es otro acorde
     for(let i=0;i<7;i++){
       const degIdx = ((songKeyIdx + MAJOR_SCALE_INTERVALS[i])%12+12)%12;
-      if(degIdx===idx) return full + DEGREE_QUALITY[i];
+      if(degIdx===c.idx) return c.tok + DEGREE_QUALITY[i];
     }
-    return full; // nota fuera de la escala: no podemos adivinar con seguridad, queda tal cual (bajo)
+    return c.tok; // nota fuera de la escala: no podemos adivinar con seguridad, queda tal cual (bajo)
   });
 }
 function resolveGuitarVersion(song, targetKey){
@@ -1040,8 +1055,8 @@ function playChordToken(token){
 }
 function renderChordsHtml(line){
   if(!line) return '';
-  return line.replace(/\b(DO|RE|MI|FA|SOL|LA|SI)(#|B)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![A-Za-z])/g,
-    (m)=> `<span class="chord-tok" data-chord="${m}">${m}</span>`);
+  // se muestra tal como está escrito; para el sonido se pasa a notación latina ("F#M" suena como FA#)
+  return mapChords(line, c=> `<span class="chord-tok" data-chord="${SHARP_NAMES[c.idx] + (c.qual==='M' ? '' : c.qual)}">${c.tok}</span>`);
 }
 
 // ---------- IDs estables ----------
