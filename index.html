@@ -254,24 +254,29 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .present-dot.active{background:#e0a552;}
 
 #presentGradosPanel{
-  display:none;position:relative;z-index:9;width:min(320px,92vw);
+  display:none;position:relative;z-index:9;width:min(560px,94vw);box-sizing:border-box;
   background:rgba(34,28,22,0.94);border:1px solid rgba(255,255,255,0.15);border-radius:12px;
-  padding:8px 10px;box-shadow:0 10px 30px rgba(0,0,0,.5);
+  padding:10px 12px 12px;box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
 #presentGradosPanel.open{display:block;}
 #presentGradosHead{
   display:flex;justify-content:space-between;align-items:center;color:#f1e3d1;
-  font-size:0.82rem;margin-bottom:6px;
+  font-size:0.95rem;margin-bottom:8px;
 }
 #presentGradosHead .present-close{padding:4px 9px;font-size:0.8rem;}
 #f_rootnote_live{
   width:100%;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);
   background:#141110;color:#f1e3d1;font-size:0.8rem;margin-bottom:6px;
 }
-#gradosRowLive{gap:4px;}
-#gradosRowLive .grado-btn{background:#2b241c;border-color:rgba(255,255,255,0.2);min-width:0;padding:5px 2px;}
-#gradosRowLive .grado-btn .notename{color:#f1e3d1;font-size:0.78rem;}
-#gradosRowLive .grado-btn .roman{color:#c9bda3;font-size:0.6rem;}
+/* en vivo los grados van grandes: 7 en fila si entra, si no 4 + 3 */
+#gradosRowLive{display:grid;grid-template-columns:repeat(7, minmax(0,1fr));gap:6px;}
+#gradosRowLive .grado-btn{background:#2b241c;border-color:rgba(255,255,255,0.2);min-width:0;padding:10px 2px;gap:4px;}
+#gradosRowLive .grado-btn .notename{color:#f1e3d1;font-size:1.25rem;}
+#gradosRowLive .grado-btn .roman{color:#e0a552;font-size:1rem;font-weight:bold;}
+@media (max-width:600px){
+  #gradosRowLive{grid-template-columns:repeat(4, minmax(0,1fr));}
+  #gradosRowLive .grado-btn{padding:12px 2px;}
+}
 
 /* Sincronizacion en la nube */
 #cloudWrap{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
@@ -2007,7 +2012,7 @@ document.getElementById('disconnectSupaBtn').addEventListener('click', ()=>{
 
 // ---------- Grados de la escala ----------
 const MAJOR_SCALE_INTERVALS = [0,2,4,5,7,9,11];
-const DEGREE_ROMAN = ['I','ii','iii','IV','V','vi','vii&deg;'];
+const DEGREE_NUM = ['1','2','3','4','5','6','7'];     // grado en número común (si es menor o disminuido lo dice el acorde: SIm, DO#°)
 const DEGREE_QUALITY = ['', 'm', 'm', '', '', 'm', 'dim'];
 const rootSel = document.getElementById('f_rootnote');
 KEYS.forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; rootSel.appendChild(o); });
@@ -2025,7 +2030,7 @@ function renderGradosInto(rowEl, rootNote){
     const btn = document.createElement('button');
     btn.className = 'grado-btn ' + cls;
     btn.type = 'button';
-    btn.innerHTML = `<span class="roman">${DEGREE_ROMAN[i]}</span><span class="notename">${noteName}${qual==='m'?'m':(qual==='dim'?'&deg;':'')}</span>`;
+    btn.innerHTML = `<span class="roman">${DEGREE_NUM[i]}</span><span class="notename">${noteName}${qual==='m'?'m':(qual==='dim'?'&deg;':'')}</span>`;
     btn.addEventListener('click', ()=>{
       playChordToken(token);
       btn.classList.add('playing');
