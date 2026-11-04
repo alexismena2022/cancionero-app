@@ -45,6 +45,24 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
 .lb{background:#2c241b;color:#f3e8d6;border:1px solid #3d2f1f;border-radius:8px;min-width:44px;height:44px;margin:0 2px;font-weight:bold;}
 .lb:active{background:#5a4630;}
 .navbig{min-width:60px;font-size:1.4rem;}
+#gradosBtn{padding:0 12px;}
+#gradosBtn.on{background:#6b431d;}
+#gradosPanel{display:none;position:absolute;left:0;right:0;bottom:62px;background:#1f1a14;border-top:1px solid #3d2f1f;padding:8px 8px 4px;z-index:4;}
+#gradosPanel.open{display:block;}
+#gradosRoot{width:100%;padding:6px;border-radius:6px;border:1px solid #5a4630;background:#141110;color:#f1e3d1;margin-bottom:6px;}
+#gradosRow{overflow:hidden;}
+.grado{float:left;width:14.2857%;padding:0 3px 6px;}
+.grado button{width:100%;background:#2b241c;border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#f1e3d1;padding:9px 0;}
+.grado button.playing{background:#6b431d;}
+.grado .gn{display:block;color:#e0a552;font-weight:bold;font-size:0.95rem;}
+.grado .gc{display:block;font-size:1.2rem;margin-top:2px;}
+@media (max-width:600px){ .grado{width:25%;} .grado button{padding:11px 0;} }
+#liveBottom span{white-space:nowrap;}
+@media (max-width:480px){
+  .lb{min-width:34px;height:40px;margin:0 1px;padding:0 4px;}
+  .navbig{min-width:42px;}
+  #liveKey{height:40px;width:62px;}
+}
 #liveKey{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;height:44px;}
 </style>
 </head>
@@ -72,8 +90,13 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <div id="liveTop">
     <button class="lb" id="liveClose">&#10005;</button>
     <div id="liveCounter"></div>
+    <button class="lb" id="gradosBtn">&#127932; Grados</button>
   </div>
   <div id="liveSlide"></div>
+  <div id="gradosPanel">
+    <select id="gradosRoot"></select>
+    <div id="gradosRow"></div>
+  </div>
   <div id="liveBottom">
     <button class="lb navbig" id="prevBtn">&#8249;</button>
     <span>
@@ -299,6 +322,7 @@ function renderSlide(){
   box.scrollTop = 0;
   $('liveCounter').innerHTML = (cur+1) + ' / ' + queue.length;
   $('liveKey').innerHTML = keyOptions(item.key);
+  if($('gradosPanel').className === 'open') renderGrados();
 }
 function openLive(i){
   if(!queue.length){ alert('Agregá al menos una canción primero.'); return; }
@@ -322,6 +346,65 @@ function shiftKey(d){
 }
 function resetKey(){ var s = findSong(queue[cur].id); queue[cur].key = s.versions[0].key; saveQueue(); renderSlide(); }
 function setZoom(z){ zoom = Math.max(0.6, Math.min(2.5, Math.round(z*10)/10)); lsSet(ZOOM_KEY, zoom); renderSlide(); }
+
+/* ---------- grados de la escala (igual que la app principal) ---------- */
+var SCALE = [0,2,4,5,7,9,11];
+var DEG_QUAL = ['', 'm', 'm', '', '', 'm', 'dim'];
+var QUAL_IV = {'':[0,4,7,12], 'm':[0,3,7,12], 'dim':[0,3,6,12]};
+var gradosRootSel = 'auto';
+function renderGrados(){
+  var songKey = queue.length ? KEYS[keyIndex(queue[cur].key)] : 'RE';
+  var h = '<option value="auto"' + (gradosRootSel==='auto'?' selected':'') + '>Tono de la canción: ' + songKey + '</option>';
+  for(var i=0;i<KEYS.length;i++){ h += '<option' + (gradosRootSel===KEYS[i]?' selected':'') + '>' + KEYS[i] + '</option>'; }
+  $('gradosRoot').innerHTML = h;
+  var root = keyIndex(gradosRootSel==='auto' ? songKey : gradosRootSel), r = '';
+  for(var j=0;j<7;j++){
+    var n = mod12(root + SCALE[j]), q = DEG_QUAL[j];
+    r += '<div class="grado"><button data-note="' + n + '" data-q="' + q + '"><span class="gn">' + (j+1) + '</span>' +
+         '<span class="gc">' + SHARP_NAMES[n] + (q==='m' ? 'm' : (q==='dim' ? '&deg;' : '')) + '</span></button></div>';
+  }
+  $('gradosRow').innerHTML = r;
+}
+var audioCtx = null;
+function getAudio(){
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if(!AC) return null;
+  if(!audioCtx){ try{ audioCtx = new AC(); }catch(e){ return null; } }
+  if(audioCtx.state === 'suspended' && audioCtx.resume){ try{ audioCtx.resume(); }catch(e){} }
+  return audioCtx;
+}
+function pluck(freq, delay){
+  var ctx = getAudio(); if(!ctx) return;
+  var t0 = ctx.currentTime + delay, dur = 1.6;
+  var osc = ctx.createOscillator(), g = ctx.createGain();
+  osc.type = 'triangle'; osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.5, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+function playChord(noteIdx, q){
+  var iv = QUAL_IV[q] || QUAL_IV[''];
+  for(var i=0;i<iv.length;i++){
+    var semis = 3*12 + noteIdx + iv[i];
+    pluck(16.3516 * Math.pow(2, semis/12), i*0.04);
+  }
+}
+$('gradosBtn').onclick = function(){
+  var p = $('gradosPanel'), open = p.className !== 'open';
+  p.className = open ? 'open' : '';
+  this.className = open ? 'lb on' : 'lb';
+  if(open) renderGrados();
+};
+$('gradosRoot').onchange = function(){ gradosRootSel = this.value; renderGrados(); this.blur(); };
+$('gradosRow').onclick = function(e){
+  var t = e.target; while(t && t !== this && t.tagName !== 'BUTTON') t = t.parentNode;
+  if(!t || t === this) return;
+  playChord(+t.getAttribute('data-note'), t.getAttribute('data-q'));
+  t.className = 'playing';
+  setTimeout(function(){ t.className = ''; }, 600);
+};
 
 /* ---------- eventos ---------- */
 $('refreshBtn').onclick = refresh;
