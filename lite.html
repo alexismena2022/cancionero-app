@@ -17,6 +17,7 @@ h2{font-size:1rem;color:#d9a55b;margin:22px 0 8px;text-transform:uppercase;lette
 .btn:active{background:#5a4630;}
 .btn-main{background:#b5762c;border-color:#b5762c;color:#141110;font-weight:bold;font-size:1.1rem;width:100%;padding:14px;margin-top:10px;}
 .btn-small{padding:6px 10px;font-size:0.85rem;}
+.btn[disabled]{opacity:0.3;}
 #status{font-size:0.85rem;color:#a3916f;margin-top:6px;}
 .row{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;border-bottom:1px solid #2c241b;padding:9px 2px;}
 .row .grow{-webkit-box-flex:1;-webkit-flex:1;flex:1;min-width:0;}
@@ -274,7 +275,8 @@ function renderQueue(){
     var s = findSong(queue[i].id);
     h += '<div class="row"><div class="grow"><div class="t">' + (i+1) + '. ' + esc(s.title) + '</div></div>' +
          '<select class="keysel" data-qkey="' + i + '">' + keyOptions(queue[i].key) + '</select>' +
-         '<button class="btn btn-small" data-up="' + i + '">&#9650;</button>' +
+         '<button class="btn btn-small" data-up="' + i + '"' + (i===0?' disabled':'') + '>&#9650;</button>' +
+         '<button class="btn btn-small" data-down="' + i + '"' + (i===queue.length-1?' disabled':'') + '>&#9660;</button>' +
          '<button class="btn btn-small" data-del="' + i + '">&#10005;</button></div>';
   }
   $('queue').innerHTML = h || '<div class="empty">Tocá canciones de la búsqueda para agregarlas, o abrí una lista guardada.</div>';
@@ -324,16 +326,51 @@ function renderSlide(){
   $('liveKey').innerHTML = keyOptions(item.key);
   if($('gradosPanel').className === 'open') renderGrados();
 }
+/* ---------- que la pantalla no se apague durante el vivo ----------
+   Navegadores nuevos: Wake Lock. Navegadores viejos (Android 5): un video negro mínimo
+   en bucle, sin sonido, que mantiene la pantalla encendida mientras se reproduce. */
+var wakeLock = null, noSleepVideo = null;
+function keepAwake(){
+  if(navigator.wakeLock && navigator.wakeLock.request){
+    try{ navigator.wakeLock.request('screen').then(function(l){ wakeLock = l; }, function(){ startNoSleepVideo(); }); return; }catch(e){}
+  }
+  startNoSleepVideo();
+}
+function startNoSleepVideo(){
+  if(!noSleepVideo){
+    var v = document.createElement('video');
+    v.setAttribute('muted', ''); v.muted = true;
+    v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', '');
+    v.setAttribute('loop', ''); v.loop = true;
+    v.setAttribute('title', 'pantalla encendida');
+    v.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;';
+    var s1 = document.createElement('source'); s1.src = 'data:video/webm;base64,GkXfo59ChoEBQveBAULygQRC84EIQoKEd2VibUKHgQJChYECGFOAZwEAAAAAAAH9EU2bdLpNu4tTq4QVSalmU6yBoU27i1OrhBZUrmtTrIHYTbuMU6uEElTDZ1OsggEeTbuMU6uEHFO7a1OsggHn7AEAAAAAAABZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVSalmsirXsYMPQkBNgI1MYXZmNjAuMTYuMTAwV0GNTGF2ZjYwLjE2LjEwMESJiECfQAAAAAAAFlSua8GuAQAAAAAAADjXgQFzxYjNX0f7PLeWe5yBACK1nIN1bmSIgQCGhVZfVlA4g4EBI+ODhDuaygDgibCBELqBEJqBAhJUw2f8c3OgY8CAZ8iaRaOHRU5DT0RFUkSHjUxhdmY2MC4xNi4xMDBzc9ZjwItjxYjNX0f7PLeWe2fIoUWjh0VOQ09ERVJEh5RMYXZjNjAuMzEuMTAyIGxpYnZweGfIoUWjiERVUkFUSU9ORIeTMDA6MDA6MDIuMDAwMDAwMDAwAB9DtnXD54EAo6OBAACAEAIAnQEqEAAQAABHCIWFiJmEiAICAAwNYAD+/6tQgKOZgQPoALEBAAEQEAAYADA/9AwAAAD+/6tQgBxTu2uRu4+zgQC3iveBAfGCAZ/wgQM='; s1.type = 'video/webm';
+    var s2 = document.createElement('source'); s2.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAMpbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAlN0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHLbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABdm1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATZzdGJsAAAAtnN0c2QAAAAAAAAAAQAAAKZhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALGF2Y0MBQsAK/+EAFWdCwAraewEQAAADABAAAAMAIPEiagEABGjOD8gAAAAQcGFzcAAAAAEAAAABAAAAFGJ0cnQAAAAAAAAKOAAACjgAAAAYc3R0cwAAAAAAAAABAAAAAgAAQAAAAAAUc3RzcwAAAAAAAAABAAAAAQAAABxzdHNjAAAAAAAAAAEAAAABAAAAAgAAAAEAAAAcc3RzegAAAAAAAAAAAAAAAgAAAoUAAAAJAAAAFHN0Y28AAAAAAAAAAQAAA1kAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAClm1kYXQAAAJvBgX//2vcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MSBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT0yIHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTAgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0wIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PTAgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MCB3ZWlnaHRwPTAga2V5aW50PTI1MCBrZXlpbnRfbWluPTEgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD0xMCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIzLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IGlwX3JhdGlvPTEuNDAgYXE9MToxLjAwAIAAAAAOZYiEBb///w9FAAFPf4AAAAAFQZogFfU='; s2.type = 'video/mp4';
+    v.appendChild(s1); v.appendChild(s2);
+    document.body.appendChild(v);
+    noSleepVideo = v;
+  }
+  try{ var pr = noSleepVideo.play(); if(pr && pr['catch']) pr['catch'](function(){}); }catch(e){}
+}
+function allowSleep(){
+  if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
+  if(noSleepVideo){ try{ noSleepVideo.pause(); }catch(e){} }
+}
+/* al volver a la app (por ejemplo tras bloquear la pantalla) se reactiva si seguís en el vivo */
+document.addEventListener('visibilitychange', function(){ if(!document.hidden && isLive()) keepAwake(); }, false);
+
 function openLive(i){
   if(!queue.length){ alert('Agregá al menos una canción primero.'); return; }
   cur = Math.max(0, Math.min(queue.length-1, i || 0));
   $('live').className = 'open';
   renderSlide();
+  keepAwake();
   var el = document.documentElement, fs = el.requestFullscreen || el.webkitRequestFullscreen;
   if(fs){ try{ fs.call(el); }catch(e){} }
 }
 function closeLive(){
   $('live').className = '';
+  allowSleep();
   var ex = document.exitFullscreen || document.webkitExitFullscreen;
   if(ex && (document.fullscreenElement || document.webkitFullscreenElement)){ try{ ex.call(document); }catch(e){} }
   renderQueue();
@@ -421,8 +458,9 @@ $('songs').onclick = function(e){
 };
 $('lists').onclick = function(e){ var i = e.target.getAttribute('data-list'); if(i !== null) openList(+i); };
 $('queue').onclick = function(e){
-  var up = e.target.getAttribute('data-up'), del = e.target.getAttribute('data-del');
+  var up = e.target.getAttribute('data-up'), down = e.target.getAttribute('data-down'), del = e.target.getAttribute('data-del');
   if(up !== null && +up > 0){ var a = queue.splice(+up, 1)[0]; queue.splice(+up-1, 0, a); }
+  else if(down !== null && +down < queue.length-1){ var b = queue.splice(+down, 1)[0]; queue.splice(+down+1, 0, b); }
   else if(del !== null){ queue.splice(+del, 1); }
   else return;
   saveQueue(); renderSongs(); renderQueue();
