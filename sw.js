@@ -1,10 +1,11 @@
-const CACHE_NAME = 'cancionero-cache-v20';
+const CACHE_NAME = 'cancionero-cache-v21';
 const CORE_URL = './index.html';
+const PRECACHE = [CORE_URL, './lite.html', './manifest.json', './manifest-lite.json', './'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll([CORE_URL, './']))
-      .catch(()=>{}) // si '/' no resuelve igual, seguimos con index.html
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
+      .catch(()=>{}) // si alguna no resuelve, seguimos; el fetch las cachea on-demand
   );
   self.skipWaiting();
 });
