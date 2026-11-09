@@ -4,12 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#141110">
+<link rel="manifest" href="manifest-lite.json">
 <title>Cancionero lite</title>
 <style>
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:#141110;color:#f3e8d6;font-family:Arial,Helvetica,sans-serif;}
 button,select,input{font-family:inherit;font-size:1rem;}
 #home{padding:14px 14px 40px;max-width:820px;margin:0 auto;}
+.ver{color:#6b5d44;font-size:0.72rem;text-align:center;margin-top:26px;}
 h1{font-family:Georgia,serif;font-size:1.5rem;margin:4px 0 2px;}
 h2{font-size:1rem;color:#d9a55b;margin:22px 0 8px;text-transform:uppercase;letter-spacing:1px;}
 .sub{color:#a3916f;font-size:0.85rem;margin-bottom:10px;}
@@ -73,6 +75,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <h1>Cancionero lite</h1>
   <div class="sub">Versión liviana para tablets viejas: solo modo en vivo.</div>
   <button class="btn" id="refreshBtn">&#8635; Actualizar canciones</button>
+  <button class="btn btn-small" id="exportBtn" style="margin-left:6px">&#8681; Exportar copia</button>
   <div id="status"></div>
 
   <h2>Listas guardadas</h2>
@@ -85,6 +88,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <h2>Para tocar (<span id="queueCount">0</span>)</h2>
   <div id="queue"></div>
   <button class="btn btn-main" id="goLive">&#127908; Modo en vivo</button>
+  <div class="ver" id="verLabel"></div>
 </div>
 
 <div id="live">
@@ -119,6 +123,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
+var APP_VERSION = 'v2026.11.08';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -441,8 +446,23 @@ $('gradosRow').onclick = function(e){
   setTimeout(function(){ t.className = ''; }, 600);
 };
 
+/* ---------- exportar copia de seguridad ---------- */
+function exportBackup(){
+  try{
+    var payload = {app:'cancionero-lite', version:APP_VERSION, exportedAt:new Date().toISOString(), data:data};
+    var blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'cancionero-backup-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} }, 1000);
+  }catch(e){ alert('No se pudo exportar: ' + e.message); }
+}
+
 /* ---------- eventos ---------- */
 $('refreshBtn').onclick = refresh;
+$('exportBtn').onclick = exportBackup;
+$('verLabel').innerHTML = 'Cancionero lite ' + APP_VERSION;
 $('search').oninput = renderSongs;
 $('search').onkeyup = renderSongs;
 $('goLive').onclick = function(){ openLive(0); };
@@ -505,6 +525,10 @@ buildSongs();
 renderAll();
 showDataStatus();
 if(navigator.onLine !== false) refresh();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} });
+}
 </script>
 </body>
 </html>
