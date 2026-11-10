@@ -67,6 +67,18 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   #liveKey{height:40px;width:62px;}
 }
 #liveKey{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;height:44px;}
+
+/* previsualizar canción (ver acordes y probar tono sin entrar al vivo) */
+.qprev{cursor:pointer;}
+.qprev .k{color:#c88a3a;}
+#preview{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#141110;z-index:20;}
+#preview.open{display:block;}
+#previewTop{position:absolute;left:0;right:0;top:0;height:46px;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:0 8px;background:#0e0c0a;}
+#previewTop .ttl{-webkit-box-flex:1;-webkit-flex:1;flex:1;text-align:center;color:#e8dcc4;font-size:0.9rem;}
+#previewBody{position:absolute;left:0;right:0;top:46px;bottom:62px;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 20px 30px;font-size:17px;}
+#previewBottom{position:absolute;left:0;right:0;bottom:0;height:62px;background:#0e0c0a;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:0 6px;padding-bottom:env(safe-area-inset-bottom,0px);z-index:3;}
+#pvKey{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;height:44px;}
+#pvApply{-webkit-box-flex:1;-webkit-flex:1;flex:1;background:#b5762c;border-color:#b5762c;color:#141110;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -111,6 +123,21 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
       <button class="lb" id="keyDown">&minus;</button><select id="liveKey"></select><button class="lb" id="keyUp">+</button><button class="lb" id="keyReset">&#8634;</button>
     </span>
     <button class="lb navbig" id="nextBtn">&#8250;</button>
+  </div>
+</div>
+
+<div id="preview">
+  <div id="previewTop">
+    <button class="lb" id="pvClose">&#10005;</button>
+    <div class="ttl">Previsualizar</div>
+  </div>
+  <div id="previewBody"></div>
+  <div id="previewBottom">
+    <button class="lb" id="pvKeyDown">&minus;</button>
+    <select id="pvKey"></select>
+    <button class="lb" id="pvKeyUp">+</button>
+    <button class="lb" id="pvReset">&#8634;</button>
+    <button class="lb" id="pvApply">Usar este tono</button>
   </div>
 </div>
 
@@ -279,7 +306,7 @@ function renderQueue(){
   var h = '';
   for(var i=0;i<queue.length;i++){
     var s = findSong(queue[i].id);
-    h += '<div class="row"><div class="grow"><div class="t">' + (i+1) + '. ' + esc(s.title) + '</div></div>' +
+    h += '<div class="row"><div class="grow qprev" data-pv="' + i + '"><div class="t">' + (i+1) + '. ' + esc(s.title) + '</div><div class="k">&#128065; ver acordes / probar tono</div></div>' +
          '<select class="keysel" data-qkey="' + i + '">' + keyOptions(queue[i].key) + '</select>' +
          '<button class="btn btn-small" data-up="' + i + '"' + (i===0?' disabled':'') + '>&#9650;</button>' +
          '<button class="btn btn-small" data-down="' + i + '"' + (i===queue.length-1?' disabled':'') + '>&#9660;</button>' +
@@ -461,10 +488,47 @@ function exportBackup(){
   }catch(e){ alert('No se pudo exportar: ' + e.message); }
 }
 
+/* ---------- previsualizar (ver acordes y probar tono sin entrar al vivo) ---------- */
+var pvIndex = -1, pvKey = '';
+function openPreview(idx){
+  if(idx < 0 || idx >= queue.length) return;
+  pvIndex = idx; pvKey = queue[idx].key;
+  $('preview').className = 'open';
+  renderPreview();
+}
+function renderPreview(){
+  if(pvIndex < 0) return;
+  var s = findSong(queue[pvIndex].id);
+  var secs = resolveVersion(s, pvKey), sheetKey = s.versions[0].key, h = '';
+  h += '<div class="ptitle">' + esc(s.title) + '</div>';
+  h += '<div class="pkey">Tono ' + esc(pvKey) + (keyIndex(sheetKey)!==keyIndex(pvKey) ? ' · hoja: ' + esc(sheetKey) : '') + '</div>';
+  for(var i=0;i<secs.length;i++){
+    var label = secs[i][0], chords = secs[i][1], lyric = secs[i][2];
+    if(!chords) continue;
+    h += '<div class="psec">' + (label ? '<span class="plabel">' + esc(label) + ':</span>' : '') +
+         '<span class="pchords">' + esc(chords) + '</span>' +
+         (lyric ? '<span class="plyric">"' + esc(lyric) + '"</span>' : '') + '</div>';
+  }
+  $('previewBody').innerHTML = h;
+  $('previewBody').scrollTop = 0;
+  $('pvKey').innerHTML = keyOptions(pvKey);
+}
+function pvShift(d){ pvKey = KEYS[mod12(keyIndex(pvKey) + d)]; renderPreview(); }
+function closePreview(apply){
+  if(apply && pvIndex >= 0){ queue[pvIndex].key = pvKey; saveQueue(); renderQueue(); }
+  $('preview').className = ''; pvIndex = -1;
+}
+
 /* ---------- eventos ---------- */
 $('refreshBtn').onclick = refresh;
 $('exportBtn').onclick = exportBackup;
 $('verLabel').innerHTML = 'Cancionero lite ' + APP_VERSION;
+$('pvClose').onclick = function(){ closePreview(false); };
+$('pvApply').onclick = function(){ closePreview(true); };
+$('pvKeyUp').onclick = function(){ pvShift(1); };
+$('pvKeyDown').onclick = function(){ pvShift(-1); };
+$('pvReset').onclick = function(){ if(pvIndex>=0){ pvKey = findSong(queue[pvIndex].id).versions[0].key; renderPreview(); } };
+$('pvKey').onchange = function(){ pvKey = this.value; renderPreview(); };
 $('search').oninput = renderSongs;
 $('search').onkeyup = renderSongs;
 $('goLive').onclick = function(){ openLive(0); };
@@ -482,7 +546,12 @@ $('lists').onclick = function(e){
   else if(prev !== null) openList(+prev, false);
 };
 $('queue').onclick = function(e){
-  var up = e.target.getAttribute('data-up'), down = e.target.getAttribute('data-down'), del = e.target.getAttribute('data-del');
+  var t = e.target;
+  while(t && t !== this && t.getAttribute('data-pv')===null && t.getAttribute('data-up')===null && t.getAttribute('data-down')===null && t.getAttribute('data-del')===null) t = t.parentNode;
+  if(!t || t === this) return;
+  var pv = t.getAttribute('data-pv');
+  if(pv !== null){ openPreview(+pv); return; }
+  var up = t.getAttribute('data-up'), down = t.getAttribute('data-down'), del = t.getAttribute('data-del');
   if(up !== null && +up > 0){ var a = queue.splice(+up, 1)[0]; queue.splice(+up-1, 0, a); }
   else if(down !== null && +down < queue.length-1){ var b = queue.splice(+down, 1)[0]; queue.splice(+down+1, 0, b); }
   else if(del !== null){ queue.splice(+del, 1); }
