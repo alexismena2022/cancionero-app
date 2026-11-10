@@ -70,7 +70,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
 
 /* previsualizar canción (ver acordes y probar tono sin entrar al vivo) */
 .qprev{cursor:pointer;}
-.qprev .k{color:#c88a3a;}
+.qprev .k{color:#e0a552;font-size:0.95rem;font-weight:bold;margin-top:2px;}
 #preview{display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:#141110;z-index:20;}
 #preview.open{display:block;}
 #previewTop{position:absolute;left:0;right:0;top:0;height:46px;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:0 8px;background:#0e0c0a;}
@@ -306,7 +306,7 @@ function renderQueue(){
   var h = '';
   for(var i=0;i<queue.length;i++){
     var s = findSong(queue[i].id);
-    h += '<div class="row"><div class="grow qprev" data-pv="' + i + '"><div class="t">' + (i+1) + '. ' + esc(s.title) + '</div><div class="k">&#128065; ver acordes / probar tono</div></div>' +
+    h += '<div class="row"><div class="grow qprev" data-pv="' + i + '"><div class="t">' + (i+1) + '. ' + esc(s.title) + '</div><div class="k">&#128065; VER ACORDES</div></div>' +
          '<select class="keysel" data-qkey="' + i + '">' + keyOptions(queue[i].key) + '</select>' +
          '<button class="btn btn-small" data-up="' + i + '"' + (i===0?' disabled':'') + '>&#9650;</button>' +
          '<button class="btn btn-small" data-down="' + i + '"' + (i===queue.length-1?' disabled':'') + '>&#9660;</button>' +
