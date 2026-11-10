@@ -85,7 +85,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <input id="search" type="text" placeholder="Buscar canción...">
   <div id="songs"></div>
 
-  <h2>Para tocar (<span id="queueCount">0</span>)</h2>
+  <h2 id="queueTitle">Para tocar (<span id="queueCount">0</span>)</h2>
   <div id="queue"></div>
   <button class="btn btn-main" id="goLive">&#127908; Modo en vivo</button>
   <div class="ver" id="verLabel"></div>
@@ -253,7 +253,8 @@ function renderLists(){
   for(var i=0;i<ls.length;i++){
     var n = (ls[i].items || []).length;
     h += '<div class="row"><div class="grow"><div class="t">' + esc(ls[i].name) + '</div><div class="k">' + n + (n===1?' canción':' canciones') + '</div></div>' +
-         '<button class="btn btn-small" data-list="' + i + '">&#127908; En vivo</button></div>';
+         '<button class="btn btn-small" data-preview="' + i + '">&#128065; Ver</button>' +
+         '<button class="btn btn-small" data-list="' + i + '" style="margin-left:4px">&#127908; En vivo</button></div>';
   }
   $('lists').innerHTML = h || '<div class="empty">No hay listas todavía. Se crean desde la app principal y aparecen acá al actualizar.</div>';
 }
@@ -289,7 +290,7 @@ function renderQueue(){
 }
 function renderAll(){ cleanQueue(); renderLists(); renderSongs(); renderQueue(); }
 
-function openList(i){
+function openList(i, golive){
   var l = (data.lists || [])[i]; if(!l) return;
   var items = l.items || [], nq = [], missing = [];
   for(var j=0;j<items.length;j++){
@@ -303,7 +304,8 @@ function openList(i){
   if(missing.length) alert('Estas canciones no están en la tablet (probá "Actualizar canciones"): ' + missing.join(', '));
   if(!nq.length) return;
   queue = nq; saveQueue(); renderSongs(); renderQueue();
-  openLive(0);
+  if(golive){ openLive(0); }
+  else { var el = $('queueTitle'); if(el && el.scrollIntoView) el.scrollIntoView(); }
 }
 function inQueueOf(arr, id){ for(var i=0;i<arr.length;i++){ if(arr[i].id===id) return true; } return false; }
 
@@ -474,7 +476,11 @@ $('songs').onclick = function(e){
   else queue.splice(pos, 1);
   saveQueue(); renderSongs(); renderQueue();
 };
-$('lists').onclick = function(e){ var i = e.target.getAttribute('data-list'); if(i !== null) openList(+i); };
+$('lists').onclick = function(e){
+  var live = e.target.getAttribute('data-list'), prev = e.target.getAttribute('data-preview');
+  if(live !== null) openList(+live, true);
+  else if(prev !== null) openList(+prev, false);
+};
 $('queue').onclick = function(e){
   var up = e.target.getAttribute('data-up'), down = e.target.getAttribute('data-down'), del = e.target.getAttribute('data-del');
   if(up !== null && +up > 0){ var a = queue.splice(+up, 1)[0]; queue.splice(+up-1, 0, a); }
