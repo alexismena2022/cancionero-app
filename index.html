@@ -69,6 +69,21 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   padding:2px 8px;border-radius:10px;white-space:nowrap;
 }
 .edit-song{background:none;border:none;color:#5a7ba3;font-size:1rem;cursor:pointer;padding:0 4px;}
+.addlist-btn{background:none;border:none;color:#3f7d4f;font-size:1rem;cursor:pointer;padding:0 4px;}
+.song-box.editing .box-controls{display:none;}
+.box-editor .be-title{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:0.9rem;background:var(--card);color:var(--ink);}
+.box-editor .be-keyrow{font-size:0.82rem;color:var(--muted);margin-bottom:8px;}
+.box-editor .be-key{padding:4px 6px;border-radius:6px;}
+.box-editor .be-hint{margin-left:8px;font-style:italic;}
+.box-editor .be-actions{margin-top:8px;display:flex;gap:8px;}
+.box-editor .be-save{background:#3f7d4f;color:#fff;border:none;border-radius:6px;padding:9px 18px;cursor:pointer;font-weight:bold;}
+.box-editor .be-cancel{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:9px 18px;cursor:pointer;color:var(--ink);}
+#listMenu{position:fixed;z-index:200;background:var(--card,#fff);border:1px solid var(--border,#ccc);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.3);padding:6px;min-width:190px;max-height:60vh;overflow:auto;display:none;}
+#listMenu.open{display:block;}
+#listMenu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--ink,#222);padding:9px 10px;border-radius:6px;cursor:pointer;font-size:0.9rem;}
+#listMenu button:hover{background:var(--accent-light,#eee);}
+#listMenu .lm-new{color:#3f7d4f;font-weight:bold;border-top:1px solid var(--border,#ccc);margin-top:4px;}
+#listMenu .lm-title{font-size:0.75rem;color:var(--muted,#888);padding:4px 10px 6px;}
 .restore-song{background:none;border:none;color:#a3691f;font-size:0.9rem;cursor:pointer;padding:0 4px;}
 .song.hidden{display:none;}
 .del-custom{background:none;border:none;color:#a33;font-size:1rem;cursor:pointer;padding:0 4px;}
@@ -1316,6 +1331,7 @@ function renderSongList(){
     const checked = prevChecked.has(song.id) ? 'checked' : '';
     const delBtn = song.custom ? `<button class="del-custom" data-id="${song.id}" title="Eliminar esta canción">&#128465;&#65039;</button>` : '';
     const editBtn = `<button class="edit-song" data-id="${song.id}" title="Editar">&#9998;&#65039;</button>`;
+    const listBtn = `<button class="addlist-btn" data-id="${song.id}" title="Agregar a lista">&#128221;</button>`;
     const restoreBtn = song.edited ? `<button class="restore-song" data-id="${song.id}" title="Volver a la original">&#8630;</button>` : '';
     const keyClass = multi?'multi':(song.custom?'custom':(song.edited?'edited':''));
     div.innerHTML = `
@@ -1324,6 +1340,7 @@ function renderSongList(){
         <span class="song-title">${song.title}</span>
         <span class="song-key ${keyClass}">${keys}${song.edited?' &middot; editada':''}</span>
         ${editBtn}
+        ${listBtn}
         ${restoreBtn}
         ${delBtn}
       </div>`;
@@ -1412,7 +1429,7 @@ listEl.addEventListener('click', async (e)=>{
     }
   }
   if(e.target.matches('.edit-song')){
-    openEditForm(e.target.getAttribute('data-id'));
+    ensureInCartAndEdit(e.target.getAttribute('data-id'));
   }
   if(e.target.matches('.restore-song')){
     const id = e.target.getAttribute('data-id');
@@ -1468,6 +1485,7 @@ function buildBoxHtml(item){
           ${badge}
           <select class="keysel" data-id="${item.id}">${keyOptions}</select>
           <button class="edit-song" data-id="${item.id}" data-key="${item.targetKey}" title="Editar este tono">&#9998;&#65039;</button>
+          <button class="addlist-btn" data-id="${item.id}" data-key="${item.targetKey}" title="Agregar a lista">&#128221;</button>
           <button class="removebtn" data-id="${item.id}">&times;</button>
         </div>
       </div>
@@ -1517,7 +1535,8 @@ pageEl.addEventListener('click', (e)=>{
     removeFromCart(e.target.getAttribute('data-id'));
   }
   if(e.target.matches('.edit-song')){
-    openEditForm(e.target.getAttribute('data-id'), e.target.getAttribute('data-key'));
+    const box = e.target.closest('.song-box');
+    enterBoxEdit(e.target.getAttribute('data-id'), e.target.getAttribute('data-key'), box);
   }
   if(e.target.matches('.chord-tok')){
     playChordToken(e.target.getAttribute('data-chord'));
@@ -3458,6 +3477,151 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.addEventListener('controllerchange', updateOfflineStatus);
 }
 updateOfflineStatus();
+
+/* ===== edición inline en la tarjeta ===== */
+function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function secRowHtml(l,c,ly){
+  return '<div class="sec-row">'+
+    '<input type="text" class="sec-label" placeholder="Etiqueta (Intro, Coro...)" value="'+escAttr(l)+'">'+
+    '<input type="text" class="sec-chords" placeholder="Acordes: RE LA MIm SOL" value="'+escAttr(c)+'">'+
+    '<input type="text" class="sec-lyric" placeholder="Letra (opcional)" value="'+escAttr(ly)+'">'+
+    '<button type="button" class="sec-del">&times;</button></div>';
+}
+function enterBoxEdit(id, key, boxEl){
+  if(!boxEl){ return; }
+  const song = findSong(id); if(!song) return;
+  const isGuitar = currentNotationMode==='guitarra';
+  const useKey = KEYS.includes(key) ? key : song.versions[0].key;
+  const resolved = isGuitar ? resolveGuitarVersion(song, useKey) : resolveVersion(song, useKey);
+  boxEl.classList.add('editing');
+  boxEl.setAttribute('draggable','false');
+  boxEl.dataset.editGuitar = isGuitar ? '1' : '';
+  const rows = resolved.sections.map(sec=>secRowHtml(sec[0], sec[1], sec[2])).join('');
+  const keyOpts = KEYS.map(k=>'<option '+(k===useKey?'selected':'')+'>'+k+'</option>').join('');
+  boxEl.querySelector('.song-box-body').innerHTML =
+    '<div class="box-editor">'+
+      '<input type="text" class="be-title" value="'+escAttr(song.title)+'" placeholder="Título">'+
+      '<div class="be-keyrow">Tono: <select class="be-key">'+keyOpts+'</select>'+
+        '<span class="be-hint">acordes SIN letra; la letra va aparte</span></div>'+
+      '<div class="be-sections">'+rows+'</div>'+
+      '<button type="button" class="smallbtn be-add">&#10133; Agregar línea</button>'+
+      '<div class="be-actions"><button type="button" class="be-save">&#128190; Guardar</button>'+
+        '<button type="button" class="be-cancel">Cancelar</button></div>'+
+    '</div>';
+}
+function saveBoxEdit(boxEl){
+  const id = boxEl.getAttribute('data-id');
+  const isGuitar = boxEl.dataset.editGuitar==='1';
+  const title = boxEl.querySelector('.be-title').value.trim();
+  if(!title){ alert('Ponele un título a la canción.'); return; }
+  const useKey = boxEl.querySelector('.be-key').value;
+  const sections = [];
+  boxEl.querySelectorAll('.be-sections .sec-row').forEach(row=>{
+    const label = row.querySelector('.sec-label').value.trim();
+    const chords = normalizeChordLine(row.querySelector('.sec-chords').value.trim());
+    const lyric = row.querySelector('.sec-lyric').value.trim();
+    if(chords) sections.push([label, chords, lyric || null]);
+  });
+  if(!sections.length){ alert('Agregá al menos una línea de acordes.'); return; }
+  const target = findSong(id); if(!target) return;
+  const updatedVersions = isGuitar ? target.versions : upsertVersion(target.versions, useKey, sections);
+  const updatedGuitar = isGuitar ? upsertVersion(target.guitarVersions||[], useKey, sections) : (target.guitarVersions||[]);
+  if(target.custom){
+    const idx = customSongs.findIndex(s=>s.id===id);
+    customSongs[idx] = Object.assign({}, customSongs[idx], {title:title, versions:updatedVersions, guitarVersions:updatedGuitar});
+    saveCustom();
+  } else {
+    overrides[id] = {title:title, versions:updatedVersions, guitarVersions:updatedGuitar};
+    saveOverrides();
+  }
+  const item = cart.find(c=>c.id===id); if(item) item.targetKey = useKey;
+  renderSongList(); renderCart();
+  if(typeof toast==='function') toast('Canción guardada');
+}
+function ensureInCartAndEdit(id){
+  const s = findSong(id); if(!s) return;
+  let item = cart.find(c=>c.id===id);
+  if(!item){ cart.push({id:id, targetKey: s.versions[0].key}); item = cart.find(c=>c.id===id); }
+  showTab('buscar', false);
+  renderSongList(); renderCart();
+  const sel = (window.CSS && CSS.escape) ? CSS.escape(id) : id;
+  const box = pageEl.querySelector('.song-box[data-id="'+sel+'"]');
+  if(box){ box.scrollIntoView({block:'center'}); enterBoxEdit(id, item.targetKey, box); }
+}
+pageEl.addEventListener('click', (e)=>{
+  const box = e.target.closest('.song-box.editing');
+  if(!box) return;
+  if(e.target.closest('.be-add')){ box.querySelector('.be-sections').insertAdjacentHTML('beforeend', secRowHtml('','','')); return; }
+  if(e.target.closest('.be-save')){ saveBoxEdit(box); return; }
+  if(e.target.closest('.be-cancel')){ renderCart(); return; }
+  if(e.target.closest('.be-sections') && e.target.closest('.sec-del')){
+    const rows = box.querySelectorAll('.be-sections .sec-row');
+    if(rows.length>1) e.target.closest('.sec-row').remove();
+    return;
+  }
+});
+
+/* ===== agregar a lista ===== */
+let listMenuEl = null;
+function closeListMenu(){ if(listMenuEl) listMenuEl.classList.remove('open'); }
+function ensureListMenu(){
+  if(listMenuEl) return listMenuEl;
+  listMenuEl = document.createElement('div');
+  listMenuEl.id = 'listMenu';
+  document.body.appendChild(listMenuEl);
+  return listMenuEl;
+}
+function addSongToList(listId, songId, key){
+  const l = lists.find(x=>x.id===listId); if(!l) return;
+  const s = findSong(songId);
+  l.items = Array.isArray(l.items) ? l.items : [];
+  l.items.push({ id: songId, title: s ? s.title : '', key: KEYS.includes(key) ? key : (s? s.versions[0].key : 'DO') });
+  l.updated = new Date().toISOString();
+  saveLists(); renderLists();
+  if(typeof toast==='function') toast('Agregada a "'+l.name+'"');
+}
+function newListWithSong(songId, key){
+  const name = prompt('Nombre de la nueva lista:');
+  if(!name || !name.trim()) return;
+  const s = findSong(songId);
+  lists.push({ id:'l'+Date.now()+Math.floor(Math.random()*1000), name:name.trim(), updated:new Date().toISOString(),
+    items:[{ id:songId, title:s?s.title:'', key: KEYS.includes(key)?key:(s?s.versions[0].key:'DO') }] });
+  saveLists(); renderLists();
+  if(typeof toast==='function') toast('Lista "'+name.trim()+'" creada');
+}
+function openAddToListMenu(songId, key, anchor){
+  const menu = ensureListMenu();
+  const sorted = lists.slice().sort((a,b)=> String(b.updated||'').localeCompare(String(a.updated||'')));
+  let html = '<div class="lm-title">Agregar a lista</div>';
+  if(!sorted.length) html += '<div class="lm-title" style="color:#a66">No tenés listas todavía</div>';
+  sorted.forEach(l=>{ html += '<button type="button" data-lm-add="'+l.id+'">'+escAttr(l.name)+' ('+((l.items||[]).length)+')</button>'; });
+  html += '<button type="button" class="lm-new" data-lm-new="1">&#10133; Nueva lista...</button>';
+  menu.innerHTML = html;
+  menu.dataset.song = songId;
+  menu.dataset.key = key || '';
+  menu.classList.add('open');
+  const r = anchor.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = Math.min(r.left, window.innerWidth - mw - 8);
+  let top = r.bottom + 4;
+  if(top + mh > window.innerHeight) top = Math.max(8, r.top - mh - 4);
+  menu.style.left = Math.max(8, left)+'px';
+  menu.style.top = top+'px';
+}
+document.addEventListener('click', (e)=>{
+  const addBtn = e.target.closest('.addlist-btn');
+  if(addBtn){ e.preventDefault(); openAddToListMenu(addBtn.getAttribute('data-id'), addBtn.getAttribute('data-key'), addBtn); return; }
+  const menu = listMenuEl;
+  if(menu && menu.classList.contains('open')){
+    const ms = menu.dataset.song, mk = menu.dataset.key;
+    const addTo = e.target.closest('[data-lm-add]');
+    if(addTo){ addSongToList(addTo.getAttribute('data-lm-add'), ms, mk); closeListMenu(); return; }
+    if(e.target.closest('[data-lm-new]')){ closeListMenu(); newListWithSong(ms, mk); return; }
+    if(!e.target.closest('#listMenu')){ closeListMenu(); }
+  }
+});
+window.addEventListener('resize', closeListMenu);
+window.addEventListener('scroll', closeListMenu, true);
 </script>
 </body>
 </html>
