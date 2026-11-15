@@ -79,6 +79,26 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
 #previewBottom{position:absolute;left:0;right:0;bottom:0;height:62px;background:#0e0c0a;display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;padding:0 6px;padding-bottom:env(safe-area-inset-bottom,0px);z-index:3;}
 #pvKey{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;height:44px;}
 #pvApply{-webkit-box-flex:1;-webkit-flex:1;flex:1;background:#b5762c;border-color:#b5762c;color:#141110;font-weight:bold;}
+/* editor inline y menú de listas en la lite */
+#previewTop .pvtbtn{background:#2c241b;border:1px solid #3d2f1f;color:#f3e8d6;border-radius:8px;height:34px;padding:0 10px;margin-left:4px;font-size:0.85rem;}
+.pe-inp,.pe-row input{width:100%;background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;padding:9px 8px;font-size:0.95rem;box-sizing:border-box;}
+.pe-keyrow{margin:10px 0 4px;color:#c8b48f;font-size:0.9rem;}
+.pe-keyrow select{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-radius:6px;padding:5px;}
+.pe-hint{color:#8a7a5c;font-size:0.8rem;font-style:italic;margin-bottom:8px;}
+.pe-row{display:-webkit-box;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;margin-bottom:6px;}
+.pe-row input{margin-right:5px;}
+.pe-row .pe-label{-webkit-box-flex:0.8;-webkit-flex:0.8;flex:0.8;}
+.pe-row .pe-chords{-webkit-box-flex:1.3;-webkit-flex:1.3;flex:1.3;font-family:'Courier New',monospace;}
+.pe-row .pe-lyric{-webkit-box-flex:1.3;-webkit-flex:1.3;flex:1.3;}
+.pe-row .pe-del{background:none;border:none;color:#c66;font-size:1.3rem;padding:0 4px;-webkit-box-flex:0;-webkit-flex:0 0 auto;flex:0 0 auto;width:auto;}
+.pe-actions{margin-top:12px;display:-webkit-box;display:-webkit-flex;display:flex;}
+.pe-save{background:#3f7d4f;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-weight:bold;-webkit-box-flex:1;-webkit-flex:1;flex:1;margin-right:8px;}
+.pe-cancel{background:#2c241b;color:#f3e8d6;border:1px solid #3d2f1f;border-radius:8px;padding:11px 20px;}
+#liteMenu{display:none;position:fixed;z-index:40;background:#241f19;border:1px solid #5a4630;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.5);padding:6px;min-width:200px;max-height:60vh;overflow:auto;}
+#liteMenu.open{display:block;}
+#liteMenu button{display:block;width:100%;text-align:left;background:none;border:none;color:#f3e8d6;padding:11px 10px;border-radius:6px;font-size:0.95rem;}
+#liteMenu .lm-new{color:#e0a552;font-weight:bold;border-top:1px solid #3d2f1f;margin-top:4px;}
+#liteMenu .lm-t{color:#8a7a5c;font-size:0.78rem;padding:4px 10px 6px;}
 </style>
 </head>
 <body>
@@ -130,6 +150,8 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <div id="previewTop">
     <button class="lb" id="pvClose">&#10005;</button>
     <div class="ttl">Previsualizar</div>
+    <button class="pvtbtn" id="pvAddList">&#128221; Lista</button>
+    <button class="pvtbtn" id="pvEdit">&#9998; Editar</button>
   </div>
   <div id="previewBody"></div>
   <div id="previewBottom">
@@ -141,6 +163,8 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   </div>
 </div>
 
+<div id="liteMenu"></div>
+
 <script>
 /* Escrito en JavaScript "viejo" (ES5, sin fetch ni flechas) para que ande en Android 5 */
 var BUILTIN_SONGS = [{"title":"Agnus Dei","versions":[{"key":"RE","sections":[["Intro/Verso","RE SOL",null],["Coro","RE LA SOL RE","santo santo"]]}]},{"title":"Alaba","versions":[{"key":"LA","sections":[["Verso","LA LA/SI MI RE",null],["Pre-coro","MI RE","mientras tenga aliento"],["Coro","FA# RE LA MI",null],["Puente","LA SI FA# RE","alabo al que reina"]]}]},{"title":"Bautizados","versions":[{"key":"RE","sections":[["Intro","SOL LA",null],["Verso","SI RE MI RE DO#",null],["Coro","RE FA# SI SOL",null]]}]},{"title":"Cambiame mi Tristeza","versions":[{"key":"RE","sections":[["Intro/Estrofa","RE SOL SI LA",null],["Estrofa","LA SOL RE","aunque no lo sienta"]]}]},{"title":"Celebrare","versions":[{"key":"SI","sections":[["Intro/Verso","SI DO# SOL# MI",null],["Coro","SI FA# SOL# FA# MI DO#",null],["Puente","SI LA SOL# MI",null]]}]},{"title":"Como David","versions":[{"key":"RE","sections":[["Verso","RE LA LA SIB","alzaré mis ojos..."],["Precoro","SIB DO LA RE DO","no se dormirá"],["Coro","RE FA SOL LA SI LA","y como David escribió este salmo"],["Puente","RE SIB LA RE","mientras yo alabo, él pelea mis batallas"],["Rap","RE FA SOL LA",null]]}]},{"title":"Cuan Grande es Dios","versions":[{"key":"RE","sections":[["(sin acordes legibles en la hoja)","",null]]}]},{"title":"Danzare","versions":[{"key":"MI","sections":[["Intro","MI DO# SI",null],["Verso/Coro","FA# LA SI LA","bendeciré a Jehová"]]},{"key":"RE","sections":[["Intro","RE (x2) SI LA",null],["Verso","RE SI LA MI",null],["","MI SOL SI LA","bendeciré a Jehová"],["Coro","RE SI LA SOL",null]]}]},{"title":"De Gloria en Gloria","versions":[{"key":"RE","sections":[["Intro","SOL LA SI FA# / SOL LA SI RE",null],["Verso","SOL RE SI LA","yo quiero ver"],["Coro","SOL RE SI LA","ya no vivo"]]}]},{"title":"Deseo Insaciable","versions":[{"key":"RE","sections":[["Verso","RE",null],["","SI SOL","te quiero conocer"],["Coro","RE FA# SI SOL",null],["Puente","SOL LA SI SOL",null],["Puente 2","SI LA FA# SOL",null]]}]},{"title":"Digno es el Cordero","versions":[{"key":"LA","sections":[["","LA FA# SI DO# RE MI",null]]}]},{"title":"El Cielo y la Tierra","versions":[{"key":"LA","sections":[["Intro","LA SI FA# RE",null],["","FA# RE LA MI","digno"],["","SI RE","no voy a parar de celebrar"],["Coro","RE LA FA# MI / RE LA SI RE",null],["Puente","FA#-SI FA# SI RE / FA# DO# LA SI",null]]}]},{"title":"El Nombre","versions":[{"key":"RE","sections":[["Intro","RE SOL",null],["Verso","RE SOL SI LA SOL",null],["Precoro","LA SI SOL / LA SI LA",null],["Coro","RE MI FA# SI LA","recibe..."],["","SI SOL RE FA#",null],["","SI SOL RE LA","el nombre de Jesús"]]}]},{"title":"El Nombre de Jesus (CTUE)","versions":[{"key":"DO#","sections":[["Intro/Instrumental","DO#- LA - FA# - DO#",null],["Verso","LA - SI - DO# - FA#","lucha por nosotros"],["Pre-Coro","FA# - SOL#","no nos detendremos"],["Coro","LA - SI - DO# - FA#","en el nombre de Jesús"],["Puente","LA - SI - DO# - FA#","Dios es por nosotros"]]}]},{"title":"El Tiempo de Cantar Llego","versions":[{"key":"DO","sections":[["","DO SOL RE FA / DO SOL RE FA",null]]}]},{"title":"En la Cruz","versions":[{"key":"RE","sections":[["Intro","SOL FA# SOL LA (x4)",null],["Estrofa","FA# SOL LA SI","señor conoces..."],["","SOL LA","se que me amas..."],["Coro","RE DO#-SI FA#-SOL..LA","hoy me postro ante Jesús"],["Puente","SOL LA SI (x2) / SOL SI LA","el velo rasgó..."]]}]},{"title":"Eres Bienvenido","versions":[{"key":"RE","sections":[["Intro","RE MI FA LA SI / RE MI FA LA SOL",null],["Verso","RE SOL MI",null],["Coro","RE SI SOL MI LA",null],["Puente","MI SI LA",null]]}]},{"title":"Es El (Estoy Preparando el Camino)","versions":[{"key":"RE","sections":[["Verso","RE SIm7 SOL RE","estoy preparando el camino"],["Precoro","SOL SI RE LA","mi placer en Él está"],["Coro","SOL LA SI FA# SOL LA","Es Él, por el"],["Puente","RE SIm LAm SOL LA",null]]}]},{"title":"Es Tiempo","versions":[{"key":"DO#","sections":[["Intro","SIB-SOL#-FA#-SOL# (x2) / RE#-SIB-FA#-SOL# (x2)",null],["","SIB DO# RE# DO# RE# SIB FA# SOL# DO#",null],["","DO# SIB FA# DO#","amor inexplicable"],["","SOL# SIB FA#","es tiempo de..."],["Coro","DO# SIB FA# DO#",null]]}]},{"title":"Este es el Dia","versions":[{"key":"RE","sections":[["Intro/Coro","RE DO SIB LA",null],["Pre-coro","SOL RE SIB LA",null]]}]},{"title":"Este es mi Deseo","versions":[{"key":"MI","sections":[["Inter sin bajo","MI","vive él, vive"],["Intro","SOL LA DO# SI","oh oh aleluya"],["Verso","DO# SOL# LA",null]]}]},{"title":"Fiesta en el Desierto","versions":[{"key":"DO#","sections":[["Intro","DO#",null],["Pre-coro","LA SI SOL# DO#",null],["Coro","// // // //",null],["Puente","DO# / LA SI DO# SOL# DO#",null]]},{"key":"FA","sections":[["Verso","FA","en Santiago..."],["Pre","DO# RE# DO FA","mi lamento cambiaste por danza"],["Coro","DO# RE# DO FA","yo danzo, danzo, danzo, danzo"],["Puente","FA / DO# RE# MI DO","aunque venga la enfermedad"]]}]},{"title":"Generacion que Danza","versions":[{"key":"RE","sections":[["Intro","RE SI",null],["","RE SIm SOL RE","tu gracia nos hace danzar"],["Pre-Estribillo","MI FA# SOL LA","nuestro corazón comienza a desbordar"],["Coro","RE MI SOL RE","seremos la generación que danza"]]}]},{"title":"Glorioso Dia","versions":[{"key":"DO#","sections":[["Verso","DO# LA#m FA# DO#","tu voz me habló"],["Precoro","FA# DO# LA#m FA#",null],["Coro","DO# FA# LA#m FA#","glorioso día"],["Puente","DO# LA#m SOL# (x2) FA#","tú me salvaste"]]}]},{"title":"Gracia Sublime","versions":[{"key":"MI","sections":[["Intro","RE MI SI SOL",null],["","MI SI RE LA",null],["Verso","LA RE FA# MI RE",null],["","RE FA# SI LA SOL SI LA",null]]}]},{"title":"Grande y Fuerte","versions":[{"key":"SI","sections":[["Intro/Verso","punteo bajo SI FA# MI",null],["Coro","MI LA MI SI SOL LA SI",null],["","SI LA SOL FA#","grande y fuerte es nuestro Dios"]]}]},{"title":"Hay Jubilo","versions":[{"key":"FA","sections":[["Intro","FA SOLm7 FA/LA SIBmaj7",null],["","FA SOL LA SIB RE LA SIB",null],["Coro","FA SOL LA SIB",null],["Puente","RE SIB FA SOL",null]]}]},{"title":"Hay Libertad","versions":[{"key":"LA","sections":[["","LA FA DO SOL","final en FA"]]}]},{"title":"Imagen","versions":[{"key":"MI","sections":[["","MI DO# LA",null]]}]},{"title":"La Bondad de Dios","versions":[{"key":"MI","sections":[["Verso 1","MI LA MI DO#m LA SI MI LA MI RE# SI LA SI MI","mientras tenga aliento"],["Coro","MI DO SOL RE",null],["Puente","SOL LA MI DO","alabo al que reina"]]}]},{"title":"Levantamos tu Nombre en Alto","versions":[{"key":"MI","sections":[["Coro","SOL LA DO# SI","oh oh aleluya"],["Puente","LA SI DO#",null]]}]},{"title":"Libres para Correr","versions":[{"key":"MI","sections":[["","MI LA DO# SI MI",null],["","MI RE DO# SI MI","uo uo uo uooo"]]}]},{"title":"Llueve","versions":[{"key":"RE","sections":[["Intro","RE SOL",null],["Verso","SI LA SOL",null],["Precoro","RE","hoy va a llover"],["","SOL","deseamos hoy tu río..."],["Coro","RE SOL RE SOL",null],["Puente","DO SI RE LA FA DO SOL","abre hoy..."]]},{"key":"MI","sections":[["Intro","MI LA",null],["Verso","DO# SI LA",null],["Precoro","MI","hoy va a llover"],["","LA","deseamos hoy tu río..."],["Coro","MI LA MI LA",null],["Puente","RE DO MI SI SOL RE LA","abre hoy..."]]}]},{"title":"Nada es Imposible","versions":[{"key":"RE","sections":[["","RE LA SI SOL",null],["Puente","RE / SOL RE MI SOL",null]]},{"key":"DO","sections":[["","DO SOL LA FA",null],["Puente","DO / FA DO RE FA",null]]}]},{"title":"No Vamos a Parar","versions":[{"key":"SIB","sections":[["","MIB FA SOL SIB","mis labios desbordan..."],["Puente","SIB LA SOL MIB / SOL FA/LA RE DO",null],["","MIB FA SOL SIB","mis labios desbordan..."],["Precoro/Puente","SOL FA RE DO",null],["Coro","MIB FA SOL SIB","no vamos a parar"]]}]},{"title":"Para que Entre el Rey","versions":[{"key":"RE","sections":[["","RE SIB FA DO",null]]}]},{"title":"Praise (Te Alabo en el Valle)","versions":[{"key":"SI","sections":[["Verso","SI RE# SI FA# MI","te alabo en el valle"],["Pre","FA# MI","mientras tenga aliento"],["Coro","SOL# MI SI FA#","alaba a Dios"],["Puente 1","SOL# MI SI FA#","no me detengo"],["Puente 2","SI DO# RE# MI","alabo al que reina"]]}]},{"title":"Que Ruja el Leon","versions":[{"key":"DO#","sections":[["Intro","DO# SOL# LA",null],["Verso","DO# SI LA","que día tan hermoso será"],["","DO# MI FA#","el día que te vea llegar"],["","DO# SOL# LA","en un caballo blanco vendrá"],["","FA# SOL#","el hijo del hombre"],["","LA SI","el Rey de Gloria"],["Coro","LA SI (MI x2) DO# SI","se abren los cielos"],["Puente","DO# MI FA# LA SI",null],["Instrumental","MI SOL#m FA#m LA SI",null]]}]},{"title":"Que se Llene tu Casa","versions":[{"key":"DO","sections":[["","DO RE MI FA SOL LA SI SOL",null],["","SOL DO SOL LA FA DO SOL FA",null]]}]},{"title":"Rey de Reyes","versions":[{"key":"RE","sections":[["Punteo","RE",null],["Intro","RE LA MI SOL",null],["Precoro","SI LA MI RE DO#","eres Jesús..."],["","SI LA SOL LA",null],["Coro","SOL RE SI LA",null],["Puente","MI SI RE LA",null]]}]},{"title":"Risen","versions":[{"key":"MI","sections":[["Inter sin bajo","MI","vive el vive"],["Intro","SOL LA DO# SI","oh oh aleluya"],["Verso","DO# SOL# LA / LA SOL# SI",null],["","MI / LA","Jesús sea exaltado"],["Coro","SOL LA DO# SI","oh oh aleluya"],["Puente","LA SI DO#",null]]}]},{"title":"Santo el que Vive","versions":[{"key":"RE#","sections":[["Intro","RE#m DO# SI SOL#m LA#",null],["","RE# DO# SI SOL#m LA#","santo es el que vive, santo es el que reina"],["Solo","SI DO# SOL#m SI LA# (x2)",null],["","SI DO#","todos lo verán, como Rey en las nubes volverá"],["","SOL#m","coronado en poder y autoridad"],["","SI LA#","el Cordero y León reinará (x4)"]]}]},{"title":"Santo por Siempre","versions":[{"key":"RE","sections":[["Intro","RE FA# MI DO# FA# mi",null],["Verso","LA RE LA fa# mi RE","mis generaciones..."],["Precoro","RE FA# MI FA# mi RE SI","tu nombre es más grande..."],["Coro","RE FA# MI DO# FA# SI mi LA",null]]}]},{"title":"Santo Santo","versions":[{"key":"RE","sections":[["Intro/Verso","RE MI SI SOL",null],["","MI SI RE LA",null],["Coro","RE FA# SI LA SOL SI LA",null]]}]},{"title":"Santo, Una Cosa","versions":[{"key":"RE","sections":[["Verso","RE SOL FA# SOL LA SOL","todo está preparado aquí"],["Precoro","FA# SOL","todos los versos y canciones"],["","SI LA SOL","tuyo es el reino..."],["Coro","RE SOL FA# MI FA# SOL","que tú eres santo..."],["Puente","MI FA# SI LA","una cosa pediré..."]]}]},{"title":"Senor Eres Fiel","versions":[{"key":"RE","sections":[["Intro/Estrofa","RE LA DO SOL / SOL LA SIB DO","gente de toda..."]]}]},{"title":"Te Doy Gloria","versions":[{"key":"FA","sections":[["Verso/Coro","FA DO RE SIB",null],["Puente","SIB DO RE FA","con una corona de espinos..."]]},{"key":"DO","sections":[["Verso/Coro","DO SOL LA FA",null],["Puente","FA SOL LA DO","con una corona de espinos..."]]}]},{"title":"Toma tu Lugar","versions":[{"key":"FA","sections":[["Verso","FA DO SOL RE DO","te preparamos un lugar"],["Verso 2","SI FA/LA SOL DO FA","se apagan luces..."],["Coro","DO SOL SI LA",null],["Puente","RE DO SOL","porque tú eres Señor"],["","RE DO SI / RE DO SOL / RE MI LA DO",null]]}]},{"title":"Tomalo","versions":[{"key":"SI","sections":[["Pre","SOL# MI","mi Dios a ti mi vida te daré"],["Coro","SI FA# SOL# MI / SI FA# DO#",null],["Puente","SI DO# RE# MI","subida"],["","DO# SOL# FA# MI","eres el que vista al ciego da"],["","DO# SOL# FA#",null]]}]},{"title":"Tu Hijo Soy","versions":[{"key":"LA","sections":[["","FA#m RE LA / MI",null]]}]},{"title":"Turn It Up","versions":[{"key":"MI","sections":[["Intro/Verso","SOL# LA DO# SOL",null],["Coro","MI SI LA",null]]}]},{"title":"Vamos a Cantar","versions":[{"key":"RE","sections":[["","RE SI LA SOL RE",null]]}]},{"title":"Ven a Habitar","versions":[{"key":"SI","sections":[["Intro","SI FA# SOL MI",null],["Verso","SI LA# RE# MI (x2)","ven a habitar..."],["Puente 1 (bajo)","MI (x4) RE# / MI FA# SOL# LA# RE#",null],["Precoro (bajo)","MI (x4) SI (x2) / MI FA# MI FA# SI","y más que todo hoy queremos..."],["Coro","MI DO# SI SOL#","tu gloria, Señor..."]]}]},{"title":"Ven Senor / La Tierra Clama / Avivanos","versions":[{"key":"DO","sections":[["","DOm SIB SOL#","hay un grito en el corazón de muchos"],["","DOm SIB SOL#","¡Ven Señor!"],["Interludio","FA/LAB",null],["","FA SIB SOL#","la tierra clama oh, oh, oh, oh"],["","SIB DOm SIB","la tierra clama, llama, llama"],["","","y al final queremos ver a Yeshúa volver"],["","SOL# SIB DO SOL","ven a hacer lo que ningún hombre pudo hacer, ¡avívanos!"]]}]},{"title":"Vive","versions":[{"key":"MI","sections":[["","MI","vive el vive"],["","SOL# LA DO# SI","ohh ohh aleluya"]]}]},{"title":"Ya no Soy un Esclavo","versions":[{"key":"SOL","sections":[["Intro","SOL DO RE11 SOL",null],["Verso 1","SOL DO RE SOL","me envuelves hoy con una canción"],["Estribillo","DO RE SOL MI RE SOL (x2)","ya no soy un esclavo del temor"],["Verso 2","SOL SIm DO RE SOL","desde el vientre fui escogido en ti"],["Puente","MIm RE SOL DO (x2)","estoy rodeado por los brazos del Padre"]]}]},{"title":"Yo Vere","versions":[{"key":"RE","sections":[["Intro/Verso","SI SOL RE LA",null],["Pre-coro","SOL SI LA","no hay necesidad.."],["","FA# SOL SI LA",null],["Coro","RE LA SI SOL",null],["Puente","SI SOL RE LA",null]]},{"key":"SOL#","sections":[["Intro/Verso","SOL# MI SI FA#",null],["","MI SOL# FA#",null],["","RE# MI SOL# FA#",null],["Coro","SI FA# SOL# MI",null]]}]},{"title":"Tú Proveerás (El Nombre)","versions":[{"key":"MI","sections":[["Intro/Verso","MI DO# LA MI",null],["Coro","SI LA MI",null],["Puente","LA DO# SI","corazón no te afanes"],["","MI LA DO# SI SOL# LA SI LA","tú proveerás"]]}]},{"title":"Digno Eres Tú Señor","versions":[{"key":"RE","sections":[["Intro/Coro","RE LA MIm LA RE","Digno eres tú Señor... tuya es la gloria"],["Puente","SOL LA SOL LA SOL LA MIm LA RE",null],["Verso","SOL LA SOL LA SOL LA MIm LA RE","Ángeles y santos se postran ante ti, los ancianos cantan y rinden sus coronas ante ti (x2)"],["Coro","RE LA MIm LA RE MIm RE","Digno eres tú Señor... tuya es la gloria"],["Día y noche","RE FA#m MIm SOL","día y noche suba el incienso ante ti (x6)"],["Coro","RE LA MIm LA RE","Digno eres tú Señor... tuya es la gloria"],["Final","RE FA#m SIm MIm LA RE MIm RE","Te exaltamos... Oh Señor"]]}]},{"title":"Hermoso Nombre","versions":[{"key":"RE","sections":[["Verso 1","RE SOL SIm LAsus4 LA RE SOL SIm LAsus4 LA","Tú fuiste el verbo en el principio, unigénito de Dios / el misterio de tu gloria revelado en tu amor"],["Coro","LA RE LAsus4 LA RE/SI LA SOL RE/FA# LAsus4 LA RE/SI LA SOL","Cuán hermoso su nombre es... el nombre de Jesús mi Rey... no hay otro nombre"],["Verso 2","SIm LA/DO# RE SOL SIm LA SIm LA/DO# RE SOL SIm LA","Dejaste el cielo por salvarme... mi transgresión perdonaste, nada nos separará"],["Coro 2","LA RE LAsus4 RE/SI LA SOL RE/FA# LAsus4 LA RE/SI LA SOL RE/SI LA SOL","Majestuoso su nombre es... no hay otro nombre"],["Puente","SOL LA SIm FA#m","La muerte venciste, el velo partiste... tuyo el poder y autoridad"],["Coro 3","LA RE LAsus4 LA RE/SI LA SOL RE/FA# LAsus4 LA RE/SI LA SOL","Poderoso su nombre es... no hay otro nombre"]]}]},{"title":"Solo Hay Uno","versions":[{"key":"MI","sections":[["Intro","MI RE DOmaj7",null],["Primera Parte","MI RE DO SOL RE","El cielo y la tierra se unen a exaltar al cordero inmolado"],["Estribillo","DOmaj7 RE MI SOL DOmaj7 RE MI","Solo hay uno digno, nadie más, nadie más, nadie más"],["Segunda Parte","SI MI RE DO SOL","Sus pisadas cambiaron la historia, sus heridas sanaron las mías"],["Puente","DO MI",null],["Tercera Parte","RE LA SOL/SI MI RE LA SOL/SI MI DO SOL/SI","Y cada amanecer, cada anochecer, levantaré mi alabanza... el león de Judá, la raíz de David, el único capaz de desatar los cielos"],["Estribillo Final","SOL MI RE/FA# DOmaj7 RE MI SI DO RE MI","Solo hay uno digno... nadie más (con variantes al final)"]]}]},{"title":"Cantaré de tu Amor","versions":[{"key":"DO","sections":[["Verso 1","FA DO / FA DO/MI / FA SOL LAm7 / FAm SOL","Por mucho tiempo busqué una razón de vivir, en medio de mil preguntas tu amor me respondió"],["Verso 2","FA DO / FA DO / FA SOL LAm7 / FA SOL","Ahora veo la luz y ya no tengo temor, tu reino vino a mi vida y ahora vivo para ti"],["Coro","DO SOL/SI / LAm7 SOL FA / DO SOL/SI / LAm7 SOL FA / REm SOL / FA SOL","Cantaré de tu amor, rendiré mi corazón ante ti... tu serás mi pasión, mis pasos se guiarán por tu voz... mi Jesús y mi rey, de tu gran amor cantaré"]]}]}];
@@ -150,7 +174,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
-var APP_VERSION = 'v2026.11.08';
+var APP_VERSION = 'v2026.11.15';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -600,6 +624,226 @@ buildSongs();
 renderAll();
 showDataStatus();
 if(navigator.onLine !== false) refresh();
+
+/* ===== escritura en Supabase (editar canción y listas desde la lite) ===== */
+function xhrJSON(method, path, body, cb){
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, SUPA_URL + path, true);
+  xhr.setRequestHeader('apikey', SUPA_KEY);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + SUPA_KEY);
+  if(body != null){ xhr.setRequestHeader('Content-Type', 'application/json'); }
+  if(method !== 'GET'){ xhr.setRequestHeader('Prefer', 'resolution=merge-duplicates,return=minimal'); }
+  xhr.timeout = 20000;
+  xhr.onload = function(){
+    if(xhr.status >= 200 && xhr.status < 300){
+      var d = null; try{ d = xhr.responseText ? JSON.parse(xhr.responseText) : null; }catch(e){}
+      cb(true, d);
+    } else cb(false, null);
+  };
+  xhr.onerror = function(){ cb(false, null); };
+  xhr.ontimeout = function(){ cb(false, null); };
+  xhr.send(body != null ? JSON.stringify(body) : null);
+}
+function cloudGetKey(key, cb){
+  xhrJSON('GET', '/rest/v1/cancionero_kv?select=value&key=eq.' + encodeURIComponent(key), null, function(ok, d){
+    if(!ok){ cb(false, null); return; }
+    cb(true, (d && d.length) ? d[0].value : null);
+  });
+}
+function cloudPutKey(key, value, cb){
+  xhrJSON('POST', '/rest/v1/cancionero_kv?on_conflict=key', {key:key, value:value, updated_at:new Date().toISOString()}, cb);
+}
+function cloudMutate(key, mutator, done){
+  cloudGetKey(key, function(ok, cur){
+    if(!ok){ done(false); return; }
+    var next; try{ next = mutator(cur); }catch(e){ done(false); return; }
+    cloudPutKey(key, next, function(ok2){ done(ok2, next); });
+  });
+}
+function upsertVersion(arr, key, sections){
+  var copy = []; arr = arr || [];
+  for(var i=0;i<arr.length;i++) copy.push({key:arr[i].key, sections:arr[i].sections});
+  var idx=-1; for(var j=0;j<copy.length;j++){ if(copy[j].key===key){ idx=j; break; } }
+  if(idx>=0) copy[idx] = {key:key, sections:sections}; else copy.push({key:key, sections:sections});
+  return copy;
+}
+function normalizeChordLine(text){
+  return text.replace(/\b(do|re|mi|fa|sol|la|si)(#|b)?(maj7|sus4|sus2|dim|m7|m|7|11)?(?![a-z0-9])/gi,
+    function(full, root, acc, qual){ return root.toUpperCase() + (acc ? acc.toUpperCase() : '') + (qual ? qual.toLowerCase() : ''); });
+}
+function isBuiltinId(id){ return /^b[0-9]+$/.test(id); }
+function mergeCustomSong(song, title, key, sections){
+  return { id: song.id, title: title, file: song.file || [], custom: true,
+           versions: upsertVersion(song.versions || [], key, sections),
+           guitarVersions: song.guitarVersions || [] };
+}
+function saveSongCloud(id, title, key, sections, cb){
+  if(isBuiltinId(id)){
+    var bidx = parseInt(id.substring(1), 10);
+    var builtin = BUILTIN_SONGS[bidx] || {title:title, versions:[]};
+    cloudMutate('overrides', function(cur){
+      cur = (cur && typeof cur === 'object' && cur.length === undefined) ? cur : {};
+      var base = cur[id] || (data.overrides && data.overrides[id]) || {title:builtin.title, versions:builtin.versions, guitarVersions:[]};
+      cur[id] = { title: title, versions: upsertVersion(base.versions || builtin.versions, key, sections), guitarVersions: base.guitarVersions || [] };
+      return cur;
+    }, function(ok, finalValue){
+      if(ok){ data.overrides = finalValue; lsSet(DATA_KEY, data); buildSongs(); renderAll(); }
+      cb(ok);
+    });
+  } else {
+    cloudMutate('customSongs', function(cur){
+      cur = (cur && cur.length !== undefined) ? cur : [];
+      var hit=false;
+      for(var i=0;i<cur.length;i++){ if(String(cur[i].id)===String(id)){ cur[i] = mergeCustomSong(cur[i], title, key, sections); hit=true; break; } }
+      if(!hit){
+        var local=null, lc=data.customSongs||[]; for(var j=0;j<lc.length;j++){ if(String(lc[j].id)===String(id)){ local=lc[j]; break; } }
+        cur.push(mergeCustomSong(local || {id:id, title:title, versions:[], guitarVersions:[]}, title, key, sections));
+      }
+      return cur;
+    }, function(ok, finalValue){
+      if(ok){ data.customSongs = finalValue; lsSet(DATA_KEY, data); buildSongs(); renderAll(); }
+      cb(ok);
+    });
+  }
+}
+
+/* ===== editor inline en la previsualización ===== */
+var pvEditing = false;
+function peRowHtml(l, c, ly){
+  return '<div class="pe-row">'+
+    '<input class="pe-label" placeholder="Etiqueta" value="'+esc(l)+'">'+
+    '<input class="pe-chords" placeholder="Acordes" value="'+esc(c)+'">'+
+    '<input class="pe-lyric" placeholder="Letra (opcional)" value="'+esc(ly)+'">'+
+    '<button type="button" class="pe-del">&times;</button></div>';
+}
+function openPvEditor(){
+  if(pvIndex < 0) return;
+  pvEditing = true;
+  var s = findSong(queue[pvIndex].id);
+  var secs = resolveVersion(s, pvKey), rows = '';
+  for(var i=0;i<secs.length;i++) rows += peRowHtml(secs[i][0], secs[i][1], secs[i][2]);
+  $('previewBody').innerHTML =
+    '<input id="peTitle" class="pe-inp" value="'+esc(s.title)+'" placeholder="Título">'+
+    '<div class="pe-keyrow">Guardar en el tono: <select id="peKey">'+keyOptions(pvKey)+'</select></div>'+
+    '<div class="pe-hint">Poné solo los acordes (ej: RE LA MIm SOL). La letra va aparte y es opcional.</div>'+
+    '<div id="peSections">'+rows+'</div>'+
+    '<button type="button" class="btn btn-small" id="peAdd" style="margin-top:4px">&#10133; Agregar línea</button>'+
+    '<div class="pe-actions"><button type="button" class="pe-save" id="peSave">&#128190; Guardar</button>'+
+    '<button type="button" class="pe-cancel" id="peCancel">Cancelar</button></div>';
+  $('previewBottom').style.display = 'none';
+  var ttl = $('previewTop').getElementsByClassName('ttl')[0]; if(ttl) ttl.innerHTML = 'Editar';
+}
+function closePvEditor(){
+  pvEditing = false;
+  $('previewBottom').style.display = '';
+  var ttl = $('previewTop').getElementsByClassName('ttl')[0]; if(ttl) ttl.innerHTML = 'Previsualizar';
+  renderPreview();
+}
+function savePvEditor(){
+  var id = queue[pvIndex].id;
+  var title = $('peTitle').value.replace(/^\s+|\s+$/g,'');
+  if(!title){ alert('Ponele un título a la canción.'); return; }
+  var useKey = $('peKey').value;
+  var rows = $('peSections').getElementsByClassName('pe-row'), sections = [];
+  for(var i=0;i<rows.length;i++){
+    var label = rows[i].getElementsByClassName('pe-label')[0].value.replace(/^\s+|\s+$/g,'');
+    var chords = normalizeChordLine(rows[i].getElementsByClassName('pe-chords')[0].value.replace(/^\s+|\s+$/g,''));
+    var lyric = rows[i].getElementsByClassName('pe-lyric')[0].value.replace(/^\s+|\s+$/g,'');
+    if(chords) sections.push([label, chords, lyric || null]);
+  }
+  if(!sections.length){ alert('Agregá al menos una línea de acordes.'); return; }
+  var btn = $('peSave'); if(btn){ btn.disabled = true; btn.innerHTML = 'Guardando...'; }
+  saveSongCloud(id, title, useKey, sections, function(ok){
+    if(!ok){ if(btn){ btn.disabled=false; btn.innerHTML='&#128190; Guardar'; } alert('No se pudo guardar. Para guardar cambios necesitás internet (wifi). Probá de nuevo.'); return; }
+    queue[pvIndex].key = useKey; pvKey = useKey; saveQueue();
+    closePvEditor(); renderQueue();
+  });
+}
+
+/* ===== agregar a lista (listas guardadas, con sync) ===== */
+function liteCloseMenu(){ var m=$('liteMenu'); if(m) m.className=''; }
+function isInside(node, container){ while(node){ if(node===container) return true; node=node.parentNode; } return false; }
+function liteOpenListMenu(songId, key, anchor){
+  var m = $('liteMenu'); if(!m) return;
+  var ls = data.lists || [], h = '<div class="lm-t">Agregar a lista</div>';
+  if(!ls.length) h += '<div class="lm-t" style="color:#c88">No hay listas todavía</div>';
+  for(var i=0;i<ls.length;i++){ h += '<button type="button" data-lm="'+i+'">'+esc(ls[i].name)+' ('+((ls[i].items||[]).length)+')</button>'; }
+  h += '<button type="button" class="lm-new" data-lmnew="1">&#10133; Nueva lista...</button>';
+  m.innerHTML = h;
+  m.setAttribute('data-song', songId);
+  m.setAttribute('data-key', key);
+  m.className = 'open';
+  var r = anchor.getBoundingClientRect();
+  var mw = m.offsetWidth, mh = m.offsetHeight;
+  var left = Math.min(r.left, window.innerWidth - mw - 8);
+  var top = r.bottom + 4; if(top + mh > window.innerHeight) top = Math.max(8, r.top - mh - 4);
+  m.style.left = Math.max(8, left) + 'px'; m.style.top = top + 'px';
+}
+function liteAddToList(listIdx, songId, key, cb){
+  var s = findSong(songId);
+  var target = (data.lists && data.lists[listIdx]) ? data.lists[listIdx] : null;
+  if(!target){ cb(false); return; }
+  cloudMutate('lists', function(cur){
+    cur = (cur && cur.length !== undefined) ? cur : [];
+    var l = null;
+    for(var i=0;i<cur.length;i++){ if(cur[i].id===target.id){ l=cur[i]; break; } }
+    if(!l){ l = {id:target.id, name:target.name, updated:target.updated, items:(target.items||[]).slice()}; cur.push(l); }
+    l.items = l.items || [];
+    l.items.push({ id: songId, title: s ? s.title : '', key: key });
+    l.updated = new Date().toISOString();
+    return cur;
+  }, function(ok, finalValue){
+    if(ok){ data.lists = finalValue; lsSet(DATA_KEY, data); renderLists(); }
+    cb(ok);
+  });
+}
+function liteNewList(songId, key, cb){
+  var name = prompt('Nombre de la nueva lista:');
+  if(!name || !name.replace(/^\s+|\s+$/g,'')){ cb(null); return; }
+  name = name.replace(/^\s+|\s+$/g,'');
+  var s = findSong(songId);
+  cloudMutate('lists', function(cur){
+    cur = (cur && cur.length !== undefined) ? cur : [];
+    cur.push({ id:'l'+Date.now()+Math.floor(Math.random()*1000), name:name, updated:new Date().toISOString(),
+      items:[{ id:songId, title:s?s.title:'', key:key }] });
+    return cur;
+  }, function(ok, finalValue){
+    if(ok){ data.lists = finalValue; lsSet(DATA_KEY, data); renderLists(); }
+    cb(ok, name);
+  });
+}
+
+/* ===== eventos del editor / lista ===== */
+$('pvEdit').onclick = function(){ openPvEditor(); };
+$('pvAddList').onclick = function(e){ if(e && e.stopPropagation) e.stopPropagation(); if(pvIndex>=0) liteOpenListMenu(queue[pvIndex].id, pvKey, this); };
+$('previewBody').addEventListener('click', function(e){
+  if(!pvEditing) return;
+  var t = e.target;
+  if(t.id==='peAdd'){ $('peSections').insertAdjacentHTML('beforeend', peRowHtml('','','')); return; }
+  if(t.id==='peSave'){ savePvEditor(); return; }
+  if(t.id==='peCancel'){ closePvEditor(); return; }
+  if(t.className==='pe-del'){ var rows=$('peSections').getElementsByClassName('pe-row'); if(rows.length>1){ var row=t.parentNode; row.parentNode.removeChild(row); } return; }
+}, false);
+document.addEventListener('click', function(e){
+  var m = $('liteMenu');
+  if(!m || m.className!=='open') return;
+  var t = e.target;
+  if(t.getAttribute && t.getAttribute('data-lm')!==null && t.getAttribute('data-lm')!==undefined && t.hasAttribute && t.hasAttribute('data-lm')){
+    var idx = parseInt(t.getAttribute('data-lm'),10);
+    var songId = m.getAttribute('data-song'), key = m.getAttribute('data-key');
+    liteCloseMenu();
+    liteAddToList(idx, songId, key, function(ok){ setStatus(ok ? 'Agregada a la lista.' : ''); if(!ok) alert('No se pudo agregar (necesitás internet). Probá de nuevo.'); });
+    return;
+  }
+  if(t.hasAttribute && t.hasAttribute('data-lmnew')){
+    var songId2 = m.getAttribute('data-song'), key2 = m.getAttribute('data-key');
+    liteCloseMenu();
+    liteNewList(songId2, key2, function(ok,name){ if(ok) setStatus('Lista "'+name+'" creada.'); else if(name!==null) alert('No se pudo crear la lista (necesitás internet).'); });
+    return;
+  }
+  if(!isInside(t, m)) liteCloseMenu();
+}, false);
+window.addEventListener('resize', liteCloseMenu, false);
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} });
