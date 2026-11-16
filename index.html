@@ -274,6 +274,10 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
   padding:10px 12px 12px;box-shadow:0 10px 30px rgba(0,0,0,.5);
 }
 #presentGradosPanel.open{display:block;}
+#presentGradosPanel{max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+/* al abrir grados, reservar espacio para que la letra (y la letra agrandada) no quede detras del panel ni de la barra */
+#presentOverlay.grados-open .present-slide{padding-bottom:360px;}
+@media (max-height:600px){ #presentOverlay.grados-open .present-slide{padding-bottom:62vh;} }
 #presentGradosHead{
   display:flex;justify-content:space-between;align-items:center;color:#f1e3d1;
   font-size:0.95rem;margin-bottom:8px;
@@ -2172,10 +2176,12 @@ function renderLiveGrados(){
 renderLiveGrados();
 const presentGradosPanel = document.getElementById('presentGradosPanel');
 document.getElementById('presentGradosBtn').addEventListener('click', ()=>{
-  presentGradosPanel.classList.toggle('open');
+  const open = presentGradosPanel.classList.toggle('open');
+  presentOverlay.classList.toggle('grados-open', open);
 });
 document.getElementById('presentGradosClose').addEventListener('click', ()=>{
   presentGradosPanel.classList.remove('open');
+  presentOverlay.classList.remove('grados-open');
 });
 rootSelLive.addEventListener('change', ()=>{ renderLiveGrados(); rootSelLive.blur(); });
 document.getElementById('presentPrev').addEventListener('click', ()=> goToSlide(presentIndex-1));
