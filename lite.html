@@ -174,7 +174,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
-var APP_VERSION = 'v2026.11.16';
+var APP_VERSION = 'v2026.11.18';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -184,6 +184,9 @@ var FLAT_KEYS = {"FA":1,"SIB":1,"MIB":1,"LAB":1,"REB":1,"SOLB":1};
 var AM_IDX = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
 var AM_SHARP = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 var AM_FLAT = ["C","Db","D","Eb","E","F","Gb","G","Ab","A","Bb","B"];
+// Grafía fija del equipo (bajo): siempre sostenidos, salvo el SIB. Nunca REB/MIB/SOLB/LAB.
+var MY_NAMES = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","SIB","SI"];
+var MY_AM = ["C","C#","D","D#","E","F","F#","G","G#","A","Bb","B"];
 var CHORD_RE = /(^|[^A-Za-zÁÉÍÓÚáéíóúÑñ#])(?:(DO|RE|MI|FA|SOL|LA|SI)(#|B)?|([A-G])(#|b)?)(maj7|sus4|sus2|dim|m7|m|M|7|11)?(?![A-Za-z])/g;
 
 function $(id){ return document.getElementById(id); }
@@ -206,20 +209,25 @@ function keyIndex(k){
   return mod12(idx);
 }
 function transposeLine(line, shift, useFlats){
-  if(!line || !shift) return line;
+  if(!line) return line;
+  // reescribe SIEMPRE a la grafía del equipo (sostenidos, salvo SIB), incluso sin transponer
   return line.replace(CHORD_RE, function(full, pre, lat, latAcc, am, amAcc, qual){
     var american = !!am;
     var acc = american ? amAcc : latAcc;
     var idx = american ? AM_IDX[am] : ROOT_IDX[lat];
     if(acc==='#') idx += 1; else if(acc==='B' || acc==='b') idx -= 1;
     idx = mod12(idx + shift);
-    var name = american ? (useFlats ? AM_FLAT : AM_SHARP)[idx] : (useFlats ? FLAT_NAMES : SHARP_NAMES)[idx];
+    var name = american ? MY_AM[idx] : MY_NAMES[idx];
     return pre + name + (qual || '');
   });
 }
 function resolveVersion(song, targetKey){
   var vs = song.versions || [];
-  for(var i=0;i<vs.length;i++){ if(vs[i].key===targetKey) return vs[i].sections || []; }
+  for(var i=0;i<vs.length;i++){ if(vs[i].key===targetKey){
+    var ex = vs[i].sections || [], ro = [];
+    for(var m=0;m<ex.length;m++){ ro.push([ex[m][0], transposeLine(ex[m][1], 0), ex[m][2]]); }
+    return ro;
+  } }
   var t = keyIndex(targetKey), best = vs[0], bestD = 99;
   for(var j=0;j<vs.length;j++){
     var d = Math.abs(keyIndex(vs[j].key) - t); d = Math.min(d, 12-d);
@@ -454,7 +462,7 @@ function renderGrados(){
   for(var j=0;j<7;j++){
     var n = mod12(root + SCALE[j]), q = DEG_QUAL[j];
     r += '<div class="grado"><button data-note="' + n + '" data-q="' + q + '"><span class="gn">' + (j+1) + '</span>' +
-         '<span class="gc">' + SHARP_NAMES[n] + (q==='m' ? 'm' : (q==='dim' ? '&deg;' : '')) + '</span></button></div>';
+         '<span class="gc">' + MY_NAMES[n] + (q==='m' ? 'm' : (q==='dim' ? '&deg;' : '')) + '</span></button></div>';
   }
   $('gradosRow').innerHTML = r;
 }
