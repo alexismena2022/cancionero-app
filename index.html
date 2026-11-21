@@ -167,6 +167,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 .sec-row input.sec-chords{flex:1.4;font-family:'Courier New',monospace;}
 .sec-row input.sec-lyric{flex:1.4;}
 .sec-row .sec-del{background:none;border:none;color:#a33;font-size:1.1rem;cursor:pointer;padding:0 4px;}
+.sec-row .sec-ins{background:none;border:none;color:#3f7d4f;font-size:1.2rem;cursor:pointer;padding:0 4px;font-weight:bold;line-height:1;}
 .smallbtn{font-size:0.78rem;background:var(--accent-light);color:var(--accent);border:1px solid var(--border);
   border-radius:8px;padding:6px 10px;cursor:pointer;font-family:Arial,sans-serif;}
 .form-actions{display:flex;gap:8px;margin-top:12px;}
@@ -3495,7 +3496,8 @@ function secRowHtml(l,c,ly){
     '<input type="text" class="sec-label" placeholder="Etiqueta (Intro, Coro...)" value="'+escAttr(l)+'">'+
     '<input type="text" class="sec-chords" placeholder="Acordes: RE LA MIm SOL" value="'+escAttr(c)+'">'+
     '<input type="text" class="sec-lyric" placeholder="Letra (opcional)" value="'+escAttr(ly)+'">'+
-    '<button type="button" class="sec-del">&times;</button></div>';
+    '<button type="button" class="sec-ins" title="Insertar línea debajo">+</button>'+
+    '<button type="button" class="sec-del" title="Quitar línea">&times;</button></div>';
 }
 function enterBoxEdit(id, key, boxEl){
   if(!boxEl){ return; }
@@ -3564,6 +3566,10 @@ pageEl.addEventListener('click', (e)=>{
   if(e.target.closest('.be-add')){ box.querySelector('.be-sections').insertAdjacentHTML('beforeend', secRowHtml('','','')); return; }
   if(e.target.closest('.be-save')){ saveBoxEdit(box); return; }
   if(e.target.closest('.be-cancel')){ renderCart(); return; }
+  if(e.target.closest('.be-sections') && e.target.closest('.sec-ins')){
+    e.target.closest('.sec-row').insertAdjacentHTML('afterend', secRowHtml('','',''));
+    return;
+  }
   if(e.target.closest('.be-sections') && e.target.closest('.sec-del')){
     const rows = box.querySelectorAll('.be-sections .sec-row');
     if(rows.length>1) e.target.closest('.sec-row').remove();

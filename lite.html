@@ -91,6 +91,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
 .pe-row .pe-chords{-webkit-box-flex:1.3;-webkit-flex:1.3;flex:1.3;font-family:'Courier New',monospace;}
 .pe-row .pe-lyric{-webkit-box-flex:1.3;-webkit-flex:1.3;flex:1.3;}
 .pe-row .pe-del{background:none;border:none;color:#c66;font-size:1.3rem;padding:0 4px;-webkit-box-flex:0;-webkit-flex:0 0 auto;flex:0 0 auto;width:auto;}
+.pe-row .pe-ins{background:none;border:none;color:#5fae6a;font-size:1.3rem;font-weight:bold;padding:0 4px;-webkit-box-flex:0;-webkit-flex:0 0 auto;flex:0 0 auto;width:auto;}
 .pe-actions{margin-top:12px;display:-webkit-box;display:-webkit-flex;display:flex;}
 .pe-save{background:#3f7d4f;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-weight:bold;-webkit-box-flex:1;-webkit-flex:1;flex:1;margin-right:8px;}
 .pe-cancel{background:#2c241b;color:#f3e8d6;border:1px solid #3d2f1f;border-radius:8px;padding:11px 20px;}
@@ -174,7 +175,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
-var APP_VERSION = 'v2026.11.18';
+var APP_VERSION = 'v2026.11.20';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -722,6 +723,7 @@ function peRowHtml(l, c, ly){
     '<input class="pe-label" placeholder="Etiqueta" value="'+esc(l)+'">'+
     '<input class="pe-chords" placeholder="Acordes" value="'+esc(c)+'">'+
     '<input class="pe-lyric" placeholder="Letra (opcional)" value="'+esc(ly)+'">'+
+    '<button type="button" class="pe-ins" title="Insertar línea debajo">+</button>'+
     '<button type="button" class="pe-del">&times;</button></div>';
 }
 function openPvEditor(){
@@ -830,6 +832,7 @@ $('previewBody').addEventListener('click', function(e){
   if(t.id==='peAdd'){ $('peSections').insertAdjacentHTML('beforeend', peRowHtml('','','')); return; }
   if(t.id==='peSave'){ savePvEditor(); return; }
   if(t.id==='peCancel'){ closePvEditor(); return; }
+  if(t.className==='pe-ins'){ t.parentNode.insertAdjacentHTML('afterend', peRowHtml('','','')); return; }
   if(t.className==='pe-del'){ var rows=$('peSections').getElementsByClassName('pe-row'); if(rows.length>1){ var row=t.parentNode; row.parentNode.removeChild(row); } return; }
 }, false);
 document.addEventListener('click', function(e){
