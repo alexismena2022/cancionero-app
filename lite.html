@@ -175,7 +175,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
-var APP_VERSION = 'v2026.11.20';
+var APP_VERSION = 'v2026.11.20b';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -736,6 +736,7 @@ function openPvEditor(){
     '<input id="peTitle" class="pe-inp" value="'+esc(s.title)+'" placeholder="Título">'+
     '<div class="pe-keyrow">Guardar en el tono: <select id="peKey">'+keyOptions(pvKey)+'</select></div>'+
     '<div class="pe-hint">Poné solo los acordes (ej: RE LA MIm SOL). La letra va aparte y es opcional.</div>'+
+    '<button type="button" class="btn btn-small" id="peAddTop" style="margin-bottom:6px">&#10133; Insertar al inicio</button>'+
     '<div id="peSections">'+rows+'</div>'+
     '<button type="button" class="btn btn-small" id="peAdd" style="margin-top:4px">&#10133; Agregar línea</button>'+
     '<div class="pe-actions"><button type="button" class="pe-save" id="peSave">&#128190; Guardar</button>'+
@@ -829,6 +830,7 @@ $('pvAddList').onclick = function(e){ if(e && e.stopPropagation) e.stopPropagati
 $('previewBody').addEventListener('click', function(e){
   if(!pvEditing) return;
   var t = e.target;
+  if(t.id==='peAddTop'){ $('peSections').insertAdjacentHTML('afterbegin', peRowHtml('','','')); return; }
   if(t.id==='peAdd'){ $('peSections').insertAdjacentHTML('beforeend', peRowHtml('','','')); return; }
   if(t.id==='peSave'){ savePvEditor(); return; }
   if(t.id==='peCancel'){ closePvEditor(); return; }

@@ -3515,6 +3515,7 @@ function enterBoxEdit(id, key, boxEl){
       '<input type="text" class="be-title" value="'+escAttr(song.title)+'" placeholder="Título">'+
       '<div class="be-keyrow">Tono: <select class="be-key">'+keyOpts+'</select>'+
         '<span class="be-hint">acordes SIN letra; la letra va aparte</span></div>'+
+      '<button type="button" class="smallbtn be-add-top">&#10133; Insertar al inicio</button>'+
       '<div class="be-sections">'+rows+'</div>'+
       '<button type="button" class="smallbtn be-add">&#10133; Agregar línea</button>'+
       '<div class="be-actions"><button type="button" class="be-save">&#128190; Guardar</button>'+
@@ -3563,6 +3564,7 @@ function ensureInCartAndEdit(id){
 pageEl.addEventListener('click', (e)=>{
   const box = e.target.closest('.song-box.editing');
   if(!box) return;
+  if(e.target.closest('.be-add-top')){ box.querySelector('.be-sections').insertAdjacentHTML('afterbegin', secRowHtml('','','')); return; }
   if(e.target.closest('.be-add')){ box.querySelector('.be-sections').insertAdjacentHTML('beforeend', secRowHtml('','','')); return; }
   if(e.target.closest('.be-save')){ saveBoxEdit(box); return; }
   if(e.target.closest('.be-cancel')){ renderCart(); return; }
