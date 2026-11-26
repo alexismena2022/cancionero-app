@@ -151,6 +151,7 @@ select.keysel{background:#1f1a14;color:#f3e8d6;border:1px solid #5a4630;border-r
   <div id="previewTop">
     <button class="lb" id="pvClose">&#10005;</button>
     <div class="ttl">Previsualizar</div>
+    <button class="pvtbtn" id="pvDefault" title="Fijar este tono como el de siempre para esta canción">&#9734;</button>
     <button class="pvtbtn" id="pvAddList">&#128221; Lista</button>
     <button class="pvtbtn" id="pvEdit">&#9998; Editar</button>
   </div>
@@ -175,7 +176,7 @@ var SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var DATA_KEY = 'cancionero_lite_data_v1';
 var QUEUE_KEY = 'cancionero_lite_queue_v1';
 var ZOOM_KEY = 'cancionero_lite_zoom_v1';
-var APP_VERSION = 'v2026.11.20b';
+var APP_VERSION = 'v2026.11.26';
 
 var KEYS = ["DO","DO#","RE","RE#","MI","FA","FA#","SOL","SOL#","LA","LA#","SI"];
 var FLAT_NAMES = ["DO","REB","RE","MIB","MI","FA","SOLB","SOL","LAB","LA","SIB","SI"];
@@ -192,6 +193,7 @@ var CHORD_RE = /(^|[^A-Za-zÁÉÍÓÚáéíóúÑñ#])(?:(DO|RE|MI|FA|SOL|LA|SI)
 
 function $(id){ return document.getElementById(id); }
 function mod12(n){ return ((n%12)+12)%12; }
+function keyOk(k){ for(var i=0;i<KEYS.length;i++){ if(KEYS[i]===k) return true; } return false; }
 function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function lsGet(k){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
 function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
@@ -249,12 +251,17 @@ function buildSongs(){
   var ov = data.overrides || {};
   for(var i=0;i<BUILTIN_SONGS.length;i++){
     var s = BUILTIN_SONGS[i], id = 'b'+i, o = ov[id];
-    if(o && o.versions) SONGS.push({id:id, title:o.title || s.title, versions:o.versions});
-    else SONGS.push({id:id, title:s.title, versions:s.versions});
+    var bs = (o && o.versions) ? {id:id, title:o.title || s.title, versions:o.versions} : {id:id, title:s.title, versions:s.versions};
+    if(o && o.defaultKey) bs.defaultKey = o.defaultKey;
+    SONGS.push(bs);
   }
   var cs = data.customSongs || [];
   for(var j=0;j<cs.length;j++){
-    if(cs[j] && cs[j].id && cs[j].versions && cs[j].versions.length) SONGS.push({id:String(cs[j].id), title:cs[j].title, versions:cs[j].versions});
+    if(cs[j] && cs[j].id && cs[j].versions && cs[j].versions.length){
+      var cso = {id:String(cs[j].id), title:cs[j].title, versions:cs[j].versions};
+      if(cs[j].defaultKey) cso.defaultKey = cs[j].defaultKey;
+      SONGS.push(cso);
+    }
   }
   SONGS.sort(function(a,b){ return norm(a.title) < norm(b.title) ? -1 : 1; });
 }
@@ -545,6 +552,7 @@ function renderPreview(){
   $('previewBody').innerHTML = h;
   $('previewBody').scrollTop = 0;
   $('pvKey').innerHTML = keyOptions(pvKey);
+  var db = $('pvDefault'); if(db) db.innerHTML = (s.defaultKey===pvKey ? '&#9733;' : '&#9734;');
 }
 function pvShift(d){ pvKey = KEYS[mod12(keyIndex(pvKey) + d)]; renderPreview(); }
 function closePreview(apply){
@@ -569,7 +577,7 @@ $('songs').onclick = function(e){
   var t = e.target; while(t && t !== this && !t.getAttribute('data-add')) t = t.parentNode;
   if(!t || t === this) return;
   var id = t.getAttribute('data-add'), pos = inQueue(id);
-  if(pos === -1){ var s = findSong(id); queue.push({id:id, key:s.versions[0].key}); }
+  if(pos === -1){ var s = findSong(id); var dk = (s.defaultKey && keyOk(s.defaultKey)) ? s.defaultKey : s.versions[0].key; queue.push({id:id, key:dk}); }
   else queue.splice(pos, 1);
   saveQueue(); renderSongs(); renderQueue();
 };
@@ -682,9 +690,11 @@ function normalizeChordLine(text){
 }
 function isBuiltinId(id){ return /^b[0-9]+$/.test(id); }
 function mergeCustomSong(song, title, key, sections){
-  return { id: song.id, title: title, file: song.file || [], custom: true,
+  var r = { id: song.id, title: title, file: song.file || [], custom: true,
            versions: upsertVersion(song.versions || [], key, sections),
            guitarVersions: song.guitarVersions || [] };
+  if(song.defaultKey) r.defaultKey = song.defaultKey;
+  return r;
 }
 function saveSongCloud(id, title, key, sections, cb){
   if(isBuiltinId(id)){
@@ -694,6 +704,7 @@ function saveSongCloud(id, title, key, sections, cb){
       cur = (cur && typeof cur === 'object' && cur.length === undefined) ? cur : {};
       var base = cur[id] || (data.overrides && data.overrides[id]) || {title:builtin.title, versions:builtin.versions, guitarVersions:[]};
       cur[id] = { title: title, versions: upsertVersion(base.versions || builtin.versions, key, sections), guitarVersions: base.guitarVersions || [] };
+      if(base.defaultKey) cur[id].defaultKey = base.defaultKey;
       return cur;
     }, function(ok, finalValue){
       if(ok){ data.overrides = finalValue; lsSet(DATA_KEY, data); buildSongs(); renderAll(); }
@@ -825,6 +836,36 @@ function liteNewList(songId, key, cb){
 }
 
 /* ===== eventos del editor / lista ===== */
+function liteSetDefaultKey(id, key, cb){
+  var song = findSong(id);
+  var cur = song && song.defaultKey;
+  var newKey = (cur===key) ? null : key;
+  if(isBuiltinId(id)){
+    cloudMutate('overrides', function(o){
+      o = (o && typeof o==='object' && o.length===undefined) ? o : {};
+      var base = o[id] || (data.overrides && data.overrides[id]);
+      if(newKey){ if(base){ base.defaultKey=newKey; o[id]=base; } else { o[id]={defaultKey:newKey}; } }
+      else if(base){ delete base.defaultKey; if(!base.versions && !base.title){ delete o[id]; } else { o[id]=base; } }
+      return o;
+    }, function(ok, fin){ if(ok){ data.overrides=fin; lsSet(DATA_KEY,data); buildSongs(); renderAll(); } cb(ok, newKey); });
+  } else {
+    cloudMutate('customSongs', function(arr){
+      arr = (arr && arr.length!==undefined) ? arr : [];
+      for(var i=0;i<arr.length;i++){ if(String(arr[i].id)===String(id)){ if(newKey) arr[i].defaultKey=newKey; else { try{ delete arr[i].defaultKey; }catch(e){} } break; } }
+      return arr;
+    }, function(ok, fin){ if(ok){ data.customSongs=fin; lsSet(DATA_KEY,data); buildSongs(); renderAll(); } cb(ok, newKey); });
+  }
+}
+$('pvDefault').onclick = function(){
+  if(pvIndex<0) return;
+  var btn=this; btn.disabled=true;
+  liteSetDefaultKey(queue[pvIndex].id, pvKey, function(ok, newKey){
+    btn.disabled=false;
+    if(!ok){ alert('No se pudo guardar el tono por defecto (necesitás internet).'); return; }
+    renderPreview();
+    setStatus(newKey ? ('Tono por defecto de esta canción: ' + newKey) : 'Tono por defecto quitado');
+  });
+};
 $('pvEdit').onclick = function(){ openPvEditor(); };
 $('pvAddList').onclick = function(e){ if(e && e.stopPropagation) e.stopPropagation(); if(pvIndex>=0) liteOpenListMenu(queue[pvIndex].id, pvKey, this); };
 $('previewBody').addEventListener('click', function(e){

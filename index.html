@@ -70,6 +70,7 @@ h2{font-size:1rem;color:var(--muted);margin:0 0 4px;font-weight:600;}
 }
 .edit-song{background:none;border:none;color:#5a7ba3;font-size:1rem;cursor:pointer;padding:0 4px;}
 .addlist-btn{background:none;border:none;color:#3f7d4f;font-size:1rem;cursor:pointer;padding:0 4px;}
+.defkey-btn{background:none;border:none;color:#caa43a;font-size:1.1rem;cursor:pointer;padding:0 2px;}
 .song-box.editing .box-controls{display:none;}
 .box-editor .be-title{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:0.9rem;background:var(--card);color:var(--ink);}
 .box-editor .be-keyrow{font-size:0.82rem;color:var(--muted);margin-bottom:8px;}
@@ -1317,7 +1318,7 @@ if(localStorage.getItem(PENDING_KEY) === null){
 function allSongs(){
   const builtinResolved = BUILTIN_SONGS.map(s=>{
     const ov = overrides[s.id];
-    if(ov) return {...s, title: ov.title, versions: ov.versions, guitarVersions: ov.guitarVersions||s.guitarVersions||[], edited:true};
+    if(ov) return {...s, title: ov.title||s.title, versions: ov.versions||s.versions, guitarVersions: ov.guitarVersions||s.guitarVersions||[], defaultKey: ov.defaultKey||s.defaultKey, edited: !!ov.versions};
     return s;
   });
   return builtinResolved.concat(customSongs);
@@ -1410,7 +1411,8 @@ let draggedId = null;
 function addToCart(id){
   if(cart.find(c=>c.id===id)) return;
   const song = findSong(id);
-  cart.push({id, targetKey: song.versions[0].key});
+  const def = (song.defaultKey && KEYS.includes(song.defaultKey)) ? song.defaultKey : song.versions[0].key;
+  cart.push({id, targetKey: def});
   renderCart();
 }
 function removeFromCart(id){
@@ -1493,6 +1495,7 @@ function buildBoxHtml(item){
         <div class="box-controls">
           ${badge}
           <select class="keysel" data-id="${item.id}">${keyOptions}</select>
+          <button class="defkey-btn" data-id="${item.id}" data-key="${item.targetKey}" title="Fijar este tono como el de siempre para esta canción">${song.defaultKey===item.targetKey?'&#9733;':'&#9734;'}</button>
           <button class="edit-song" data-id="${item.id}" data-key="${item.targetKey}" title="Editar este tono">&#9998;&#65039;</button>
           <button class="addlist-btn" data-id="${item.id}" data-key="${item.targetKey}" title="Agregar a lista">&#128221;</button>
           <button class="removebtn" data-id="${item.id}">&times;</button>
@@ -1832,7 +1835,7 @@ document.getElementById('saveSongBtn').addEventListener('click', ()=>{
       customSongs[idx] = {...customSongs[idx], title, versions:updatedVersions, guitarVersions:updatedGuitarVersions};
       saveCustom();
     } else {
-      overrides[editingId] = {title, versions:updatedVersions, guitarVersions:updatedGuitarVersions};
+      overrides[editingId] = Object.assign({}, overrides[editingId]||{}, {title, versions:updatedVersions, guitarVersions:updatedGuitarVersions});
       saveOverrides();
     }
   } else {
@@ -3544,7 +3547,7 @@ function saveBoxEdit(boxEl){
     customSongs[idx] = Object.assign({}, customSongs[idx], {title:title, versions:updatedVersions, guitarVersions:updatedGuitar});
     saveCustom();
   } else {
-    overrides[id] = {title:title, versions:updatedVersions, guitarVersions:updatedGuitar};
+    overrides[id] = Object.assign({}, overrides[id]||{}, {title:title, versions:updatedVersions, guitarVersions:updatedGuitar});
     saveOverrides();
   }
   const item = cart.find(c=>c.id===id); if(item) item.targetKey = useKey;
@@ -3626,7 +3629,26 @@ function openAddToListMenu(songId, key, anchor){
   menu.style.left = Math.max(8, left)+'px';
   menu.style.top = top+'px';
 }
+function setDefaultKey(id, key){
+  if(!KEYS.includes(key)) return;
+  const song = findSong(id);
+  const cur = song && song.defaultKey;
+  const newKey = (cur===key) ? null : key; // toggle: si ya es el default en este tono, lo quita
+  if(song && song.custom){
+    const idx = customSongs.findIndex(s=>s.id===id);
+    if(idx>=0){ if(newKey) customSongs[idx].defaultKey = newKey; else delete customSongs[idx].defaultKey; saveCustom(); }
+  } else {
+    const ov = overrides[id] || {};
+    if(newKey) ov.defaultKey = newKey; else delete ov.defaultKey;
+    if(!ov.defaultKey && !ov.versions && !ov.title) delete overrides[id]; else overrides[id] = ov;
+    saveOverrides();
+  }
+  if(typeof toast==='function') toast(newKey ? ('Tono por defecto: '+newKey) : 'Tono por defecto quitado');
+  renderCart();
+}
 document.addEventListener('click', (e)=>{
+  const defBtn = e.target.closest('.defkey-btn');
+  if(defBtn){ e.preventDefault(); setDefaultKey(defBtn.getAttribute('data-id'), defBtn.getAttribute('data-key')); return; }
   const addBtn = e.target.closest('.addlist-btn');
   if(addBtn){ e.preventDefault(); openAddToListMenu(addBtn.getAttribute('data-id'), addBtn.getAttribute('data-key'), addBtn); return; }
   const menu = listMenuEl;
