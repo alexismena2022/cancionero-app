@@ -2932,16 +2932,27 @@ function lc_extractSheet(html){
   }catch(e){ return {sheet:'', title:''}; }
 }
 const LC_PROXIES = [
-  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-  u => 'https://thingproxy.freeboard.io/fetch/' + u
+  { url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), kind: 'text' },
+  { url: u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), kind: 'text' },
+  { url: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u), kind: 'text' },
+  { url: u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), kind: 'json' },
+  { url: u => 'https://thingproxy.freeboard.io/fetch/' + u, kind: 'text' }
 ];
 async function lc_fetch(url){
-  for(const mk of LC_PROXIES){
+  for(const px of LC_PROXIES){
     try{
-      const res = await fetch(mk(url), {redirect:'follow'});
-      if(res && res.ok){ const t = await res.text(); if(t && t.length > 200) return t; }
-    }catch(e){}
+      const ctrl = new AbortController();
+      const to = setTimeout(()=>{ try{ ctrl.abort(); }catch(e){} }, 12000);
+      let t = null;
+      try{
+        const res = await fetch(px.url(url), {signal: ctrl.signal, redirect: 'follow'});
+        if(res && res.ok){
+          if(px.kind === 'json'){ const j = await res.json(); t = j && j.contents; }
+          else { t = await res.text(); }
+        }
+      } finally { clearTimeout(to); }
+      if(t && t.length > 200) return t;
+    }catch(e){ /* probar el siguiente proxy */ }
   }
   return null;
 }

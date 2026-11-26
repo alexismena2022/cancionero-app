@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cancionero-cache-v31';
+const CACHE_NAME = 'cancionero-cache-v32';
 const CORE_URL = './index.html';
 const PRECACHE = [CORE_URL, './lite.html', './manifest.json', './manifest-lite.json', './'];
 
@@ -23,6 +23,9 @@ self.addEventListener('activate', (event) => {
 // y de paso, si hay internet, actualizar la copia guardada en segundo plano.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Solo manejamos pedidos de la propia app. Todo lo de afuera (proxies para traer
+  // canciones, Supabase, etc.) pasa de largo sin que el SW lo toque.
+  try { if (new URL(event.request.url).origin !== self.location.origin) return; } catch (e) { return; }
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchAndUpdate = fetch(event.request).then((networkResponse) => {
