@@ -2803,7 +2803,7 @@ function parseChordSheet(raw){
       case 'labelchords': headerZone = false; startSection(impNormLabel(it.label), false); addChordLine(it.tokens, true); break;
       case 'chords': case 'inline':
         headerZone = false;
-        if(!cur || (cur.unlabeled && prevBlank && cur.chordLines.length)) startSection('', true);
+        if(!cur || (prevBlank && cur.chordLines.length)) startSection('', true);
         addChordLine(it.tokens);
         if(it.text) cur.lyrics.push(it.text);
         break;
