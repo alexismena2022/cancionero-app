@@ -539,11 +539,53 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
 
     <div id="tabBar">
       <button type="button" class="tab-btn active" data-tab="buscar">&#128269; Buscar</button>
-      <button type="button" class="tab-btn" data-tab="listas">&#128203; Listas</button>
       <button type="button" class="tab-btn" data-tab="herramientas">&#128295; Herramientas</button>
     </div>
 
     <div id="tabBuscar" class="tab-panel">
+
+    <div id="addWrap">
+      <div id="addToggle"><span id="addFormTitle">&#10133; Agregar canción nueva</span> <span id="addToggleArrow">&#9660;</span></div>
+      <div id="addForm">
+        <div id="pasteBox">
+          <label for="fetchUrl">&#128279; Traer de la web (La Cuerda / Cifra Club)</label>
+          <div class="formhint" style="margin:2px 0 6px;">Pegá el <b>link</b> de la canción (La Cuerda o Cifra Club) y la app la trae y completa sola. Si no tenés el link, tocá "Buscar".</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <input type="url" id="fetchUrl" placeholder="link de La Cuerda o Cifra Club" style="flex:1;min-width:180px;" spellcheck="false" autocomplete="off">
+            <button type="button" id="fetchBtn">&#11015;&#65039; Traer</button>
+            <button type="button" id="fetchSearchBtn" title="Buscar la canción en La Cuerda">&#128269; Buscar</button>
+          </div>
+          <div id="fetchMsg" class="formhint" style="margin:6px 0 0;"></div>
+          <div class="formhint" style="margin:10px 0 2px;text-align:center;">&mdash; o pegá el texto &mdash;</div>
+          <label for="pasteText">&#128203; Pegar una canción (opcional)</label>
+          <div class="formhint" style="margin:2px 0 6px;">Copiá la hoja desde La Cuerda, Cifra Club o donde la tengas y pegala acá. La app arma sola el título, el tono, las secciones y los acordes de bajo. Después revisás los campos de abajo y guardás.</div>
+          <textarea id="pasteText" rows="7" placeholder="Pegá acá el texto de la canción…" spellcheck="false" autocomplete="off"></textarea>
+          <button type="button" id="pasteConvertBtn">&#10024; Convertir y completar el formulario</button>
+          <div id="pasteReport"></div>
+          <div class="formhint" style="margin:10px 0 0;text-align:center;">&mdash; o completá a mano &mdash;</div>
+        </div>
+        <label>Título</label>
+        <input type="text" id="f_title" placeholder="Ej: Digno Eres Tú Señor">
+        <label>Tono</label>
+        <select id="f_key"></select>
+
+        <label style="margin-top:14px;">Secciones (acordes SIN letra mezclada &mdash; la letra va aparte)</label>
+        <div id="f_sections"></div>
+        <button type="button" class="smallbtn" id="addSectionBtn">&#10133; Agregar línea</button>
+        <div class="formhint">Tip: en "Acordes" poné solo las notas (ej: RE LA MIm SOL, o D A Em G). En "Letra (opcional)" poné una pista corta de la frase, no la letra completa.</div>
+
+        <div class="form-actions">
+          <button type="button" id="saveSongBtn">Guardar canción</button>
+          <button type="button" id="cancelSongBtn">Cancelar</button>
+        </div>
+      </div>
+      <div class="backup-row">
+        <button type="button" id="exportBtn">&#11015;&#65039; Exportar mis canciones</button>
+        <button type="button" id="importBtn">&#11014;&#65039; Importar canciones</button>
+        <input type="file" id="importFile" accept="application/json">
+      </div>
+    </div>
+
     <h2>Todas las canciones (tildá para agregar)</h2>
     <div id="list"></div>
     <div id="empty">No se encontró ninguna canción con ese nombre.
@@ -556,11 +598,10 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
         </div>
       </div>
     </div>
-    </div>
 
-    <div id="tabListas" class="tab-panel" style="display:none;">
+    <div id="listsSection">
       <h2>Listas para eventos</h2>
-      <div class="hint">Armá tu cancionero en la pestaña Buscar, ponele un nombre y guardalo acá. Después lo abrís con un toque, con los mismos tonos y el mismo orden.</div>
+      <div class="hint">Armá tu cancionero tildando canciones arriba, ponele un nombre y guardalo acá. Después lo abrís con un toque, con los mismos tonos y el mismo orden.</div>
       <div id="listSaveBox">
         <label for="listName">Guardar el cancionero actual como lista</label>
         <input type="text" id="listName" placeholder="Ej: Domingo mañana" maxlength="60" autocomplete="off">
@@ -570,6 +611,8 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
       <div id="listsContainer"></div>
       <div id="listsEmpty">Todavía no guardaste ninguna lista.</div>
     </div>
+    </div>
+
 
     <div id="tabHerramientas" class="tab-panel" style="display:none;">
     <div id="backupWrap">
@@ -647,49 +690,6 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
         <div class="chrom-row" id="chordRow7"></div>
       </div>
     </div>
-
-    <div id="addWrap">
-      <div id="addToggle"><span id="addFormTitle">&#10133; Agregar canción nueva</span> <span id="addToggleArrow">&#9660;</span></div>
-      <div id="addForm">
-        <div id="pasteBox">
-          <label for="fetchUrl">&#128279; Traer de la web (La Cuerda / Cifra Club)</label>
-          <div class="formhint" style="margin:2px 0 6px;">Pegá el <b>link</b> de la canción (La Cuerda o Cifra Club) y la app la trae y completa sola. Si no tenés el link, tocá "Buscar".</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-            <input type="url" id="fetchUrl" placeholder="link de La Cuerda o Cifra Club" style="flex:1;min-width:180px;" spellcheck="false" autocomplete="off">
-            <button type="button" id="fetchBtn">&#11015;&#65039; Traer</button>
-            <button type="button" id="fetchSearchBtn" title="Buscar la canción en La Cuerda">&#128269; Buscar</button>
-          </div>
-          <div id="fetchMsg" class="formhint" style="margin:6px 0 0;"></div>
-          <div class="formhint" style="margin:10px 0 2px;text-align:center;">&mdash; o pegá el texto &mdash;</div>
-          <label for="pasteText">&#128203; Pegar una canción (opcional)</label>
-          <div class="formhint" style="margin:2px 0 6px;">Copiá la hoja desde La Cuerda, Cifra Club o donde la tengas y pegala acá. La app arma sola el título, el tono, las secciones y los acordes de bajo. Después revisás los campos de abajo y guardás.</div>
-          <textarea id="pasteText" rows="7" placeholder="Pegá acá el texto de la canción…" spellcheck="false" autocomplete="off"></textarea>
-          <button type="button" id="pasteConvertBtn">&#10024; Convertir y completar el formulario</button>
-          <div id="pasteReport"></div>
-          <div class="formhint" style="margin:10px 0 0;text-align:center;">&mdash; o completá a mano &mdash;</div>
-        </div>
-        <label>Título</label>
-        <input type="text" id="f_title" placeholder="Ej: Digno Eres Tú Señor">
-        <label>Tono</label>
-        <select id="f_key"></select>
-
-        <label style="margin-top:14px;">Secciones (acordes SIN letra mezclada &mdash; la letra va aparte)</label>
-        <div id="f_sections"></div>
-        <button type="button" class="smallbtn" id="addSectionBtn">&#10133; Agregar línea</button>
-        <div class="formhint">Tip: en "Acordes" poné solo las notas (ej: RE LA MIm SOL, o D A Em G). En "Letra (opcional)" poné una pista corta de la frase, no la letra completa.</div>
-
-        <div class="form-actions">
-          <button type="button" id="saveSongBtn">Guardar canción</button>
-          <button type="button" id="cancelSongBtn">Cancelar</button>
-        </div>
-      </div>
-      <div class="backup-row">
-        <button type="button" id="exportBtn">&#11015;&#65039; Exportar mis canciones</button>
-        <button type="button" id="importBtn">&#11014;&#65039; Importar canciones</button>
-        <input type="file" id="importFile" accept="application/json">
-      </div>
-    </div>
-
     </div>
 
   </div>
@@ -915,9 +915,31 @@ function ensureAudioCtx(){
 // Desbloqueo de audio para celulares (sobre todo iPhone/Safari): hay que reproducir
 // algo, aunque sea silencioso, en el primerísimo toque del usuario, sin esperar
 // a que termine de descargar nada de internet. Si no, el audio queda "mudo".
+// En iPhone, además, el Web Audio queda MUDO si el interruptor de silencio
+// (el switch lateral) está activado. Para destrabarlo reproducimos un audio
+// silencioso con un elemento <audio> en el primer toque: eso cambia la
+// "sesión de audio" de iOS a modo reproducción y hace que los acordes suenen
+// aunque el teléfono esté en silencio. En Android es inofensivo.
+const SILENT_WAV = 'data:audio/wav;base64,UklGRoQJAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YWAJAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA=';
+let _silentAudioEl = null;
+function primeSilentAudio(){
+  try{
+    if(!_silentAudioEl){
+      _silentAudioEl = document.createElement('audio');
+      _silentAudioEl.setAttribute('playsinline','');
+      _silentAudioEl.setAttribute('webkit-playsinline','');
+      _silentAudioEl.preload = 'auto';
+      _silentAudioEl.src = SILENT_WAV;
+    }
+    try{ _silentAudioEl.currentTime = 0; }catch(e){}
+    const p = _silentAudioEl.play();
+    if(p && p.catch) p.catch(e=> dbgLog('silentAudio play rechazado: '+e.message));
+  }catch(e){ dbgLog('primeSilentAudio ERROR: '+e.message); }
+}
 function unlockAudioForMobile(){
   const ctx = ensureAudioCtx();
   if(ctx.state === 'suspended') ctx.resume();
+  primeSilentAudio();
   try{
     const buffer = ctx.createBuffer(1, 1, 22050);
     const src = ctx.createBufferSource();
@@ -927,8 +949,14 @@ function unlockAudioForMobile(){
     dbgLog('unlockAudioForMobile OK, estado='+ctx.state);
   }catch(e){ dbgLog('unlockAudioForMobile ERROR: '+e.message); }
 }
+// Lo reintentamos en CADA toque (no una sola vez): iOS puede volver a
+// suspender el audio al cambiar de pestaña, bloquear la pantalla, etc.
 ['touchstart','touchend','click'].forEach(evt=>{
-  document.addEventListener(evt, unlockAudioForMobile, {once:true, passive:true});
+  document.addEventListener(evt, unlockAudioForMobile, {passive:true});
+});
+// Al volver a la app (desbloqueo de pantalla / cambio de pestaña) reanudamos.
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
 });
 const C0 = 16.3516; // Do de la octava 0, referencia con LA4=440Hz
 function freqFromNote(rootIdx, octave){
@@ -1402,10 +1430,11 @@ searchInput.addEventListener('input', attachSearchFilter);
 function showTab(target, focusSearch){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-tab')===target));
   document.getElementById('tabBuscar').style.display = target==='buscar' ? '' : 'none';
-  document.getElementById('tabListas').style.display = target==='listas' ? '' : 'none';
   document.getElementById('tabHerramientas').style.display = target==='herramientas' ? '' : 'none';
-  if(target==='buscar' && focusSearch) searchInput.focus();
-  if(target==='listas'){ renderLists(); refreshListsFromCloud(); }
+  if(target==='buscar'){
+    if(focusSearch) searchInput.focus();
+    renderLists(); refreshListsFromCloud(); // las listas ahora viven en esta pestaña
+  }
   if(target==='herramientas') updateBackupUi();
 }
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1791,7 +1820,7 @@ function openEditForm(id, presetKey){
   }
   const modoLabel = editingIsGuitar ? ' &#127928; (vista guitarra)' : ' &#127925; (vista bajo)';
   document.getElementById('addFormTitle').innerHTML = '&#9998;&#65039; Editando: '+song.title+' &mdash; tono '+key+modoLabel+origNote;
-  showTab('herramientas', false); // el formulario vive en esa pestaña: hay que mostrarla
+  showTab('buscar', false); // el formulario vive en la pestaña Buscar
   addForm.classList.add('open');
   addToggleArrow.innerHTML = '&#9650;';
   window.scrollTo({top:0, behavior:'smooth'});
@@ -2430,8 +2459,9 @@ listsContainer.addEventListener('click', async (e)=>{
 
 // atajo desde el panel del cancionero: ir directo a guardar
 document.getElementById('gotoSaveListBtn').addEventListener('click', ()=>{
-  showTab('listas', false);
-  window.scrollTo({top:0, behavior:'smooth'});
+  showTab('buscar', false);
+  const box = document.getElementById('listSaveBox');
+  if(box && box.scrollIntoView) box.scrollIntoView({behavior:'smooth', block:'center'});
   listNameInput.focus();
 });
 
@@ -3064,7 +3094,7 @@ function updateEmptyHelp(show){
 }
 document.getElementById('emptyPasteBtn').addEventListener('click', ()=>{
   const q = searchInput.value.trim();
-  showTab('herramientas', false);
+  showTab('buscar', false);
   resetForm();
   if(q) document.getElementById('f_title').value = q;
   addForm.classList.add('open');
