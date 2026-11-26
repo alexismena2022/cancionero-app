@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cancionero-cache-v32';
+const CACHE_NAME = 'cancionero-cache-v33';
 const CORE_URL = './index.html';
 const PRECACHE = [CORE_URL, './lite.html', './manifest.json', './manifest-lite.json', './'];
 

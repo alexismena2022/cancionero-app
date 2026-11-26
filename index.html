@@ -2931,7 +2931,15 @@ function lc_extractSheet(html){
     return {sheet: (doc.body ? doc.body.textContent : '') || '', title};
   }catch(e){ return {sheet:'', title:''}; }
 }
+// base de la Edge Function propia (intermediario confiable); usa la misma URL de Supabase configurada
+function lc_fnBase(){
+  let u = DEFAULT_SUPA_URL;
+  try{ const c = loadSupaConfig(); if(c && c.url && !c.disabled) u = c.url; }catch(e){}
+  return (u||'').trim().replace(/\/rest\/v1\/?$/i,'').replace(/\/+$/,'') + '/functions/v1/traer';
+}
 const LC_PROXIES = [
+  // 1º: tu función propia en Supabase (si está desplegada). Si no, cae a los públicos.
+  { url: u => lc_fnBase() + '?url=' + encodeURIComponent(u), kind: 'text' },
   { url: u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u), kind: 'text' },
   { url: u => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u), kind: 'text' },
   { url: u => 'https://corsproxy.io/?url=' + encodeURIComponent(u), kind: 'text' },
