@@ -2998,18 +2998,25 @@ document.getElementById('fetchBtn').addEventListener('click', async ()=>{
 });
 const LC_OKRE = /^https?:\/\/((acordes|chords)\.lacuerda\.net|(www\.)?cifraclub\.com(\.br)?)\/[^\/]+\/[^\/?#]+/i;
 async function lc_search(q){
-  const html = await lc_fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q + ' acordes cifra'));
-  if(!html) return null;
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const urls = [
+    'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q + ' acordes cifra lacuerda'),
+    'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q + ' acordes lacuerda cifraclub')
+  ];
   const out = [], seen = {};
-  doc.querySelectorAll('a').forEach(a=>{
-    let href = a.getAttribute('href') || '';
-    const m = href.match(/[?&]uddg=([^&]+)/); if(m){ try{ href = decodeURIComponent(m[1]); }catch(e){} }
-    if(LC_OKRE.test(href)){
-      let clean = href.split('#')[0].split('?')[0].replace(/\/imprimir\.html$/i,'/');
-      if(!seen[clean]){ seen[clean] = 1; out.push({url: clean, title: (a.textContent || '').replace(/\s+/g,' ').trim(), site: /cifraclub/i.test(clean) ? 'Cifra Club' : 'La Cuerda'}); }
-    }
-  });
+  for(const u of urls){
+    const html = await lc_fetch(u);
+    if(!html) continue;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('a').forEach(a=>{
+      let href = a.getAttribute('href') || '';
+      const m = href.match(/[?&]uddg=([^&]+)/); if(m){ try{ href = decodeURIComponent(m[1]); }catch(e){} }
+      if(LC_OKRE.test(href)){
+        let clean = href.split('#')[0].split('?')[0].replace(/\/imprimir\.html$/i,'/');
+        if(!seen[clean]){ seen[clean] = 1; out.push({url: clean, title: (a.textContent || '').replace(/\s+/g,' ').trim(), site: /cifraclub/i.test(clean) ? 'Cifra Club' : 'La Cuerda'}); }
+      }
+    });
+    if(out.length) break;
+  }
   return out;
 }
 document.getElementById('fetchSearchBtn').addEventListener('click', async ()=>{
@@ -3024,8 +3031,13 @@ document.getElementById('fetchSearchBtn').addEventListener('click', async ()=>{
       results.slice(0,10).forEach(r=>{ h += '<button type="button" class="smallbtn lc-res" data-url="' + encodeURIComponent(r.url) + '" style="text-align:left;"><b>' + (r.site||'') + ':</b> ' + (r.title || r.url).replace(/</g,'&lt;') + '</button>'; });
       fetchMsgEl.innerHTML = h + '</div>';
     } else {
-      const g = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net');
-      fetchMsgEl.innerHTML = 'No pude buscar sola (el intermediario puede estar caído). <a href="' + g + '" target="_blank" rel="noopener">&#128269; Abrir búsqueda en Google</a> &mdash; abrí el resultado de La Cuerda, copiá el link y pegalo arriba.';
+      const gl = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net');
+      const gc = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' site:cifraclub.com');
+      fetchMsgEl.innerHTML = 'La búsqueda automática no respondió (los buscadores bloquean pedidos de servidores). Buscala vos:' +
+        '<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">' +
+        '<a href="' + gl + '" target="_blank" rel="noopener">&#128269; en La Cuerda</a>' +
+        '<a href="' + gc + '" target="_blank" rel="noopener">&#128269; en Cifra Club</a></div>' +
+        '<div class="formhint" style="margin-top:4px;">Abrí un resultado, copiá el link y pegalo arriba en &laquo;Traer&raquo;.</div>';
     }
   }catch(e){ fetchMsgEl.textContent = 'Error al buscar: ' + (e.message || e); }
   finally{ btn.disabled = false; }
