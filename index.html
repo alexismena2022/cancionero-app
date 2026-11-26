@@ -652,10 +652,10 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
       <div id="addToggle"><span id="addFormTitle">&#10133; Agregar canción nueva</span> <span id="addToggleArrow">&#9660;</span></div>
       <div id="addForm">
         <div id="pasteBox">
-          <label for="fetchUrl">&#128279; Traer de la web (La Cuerda)</label>
-          <div class="formhint" style="margin:2px 0 6px;">Pegá el <b>link</b> de la canción en La Cuerda y la app la trae y completa sola. Si no tenés el link, tocá "Buscar".</div>
+          <label for="fetchUrl">&#128279; Traer de la web (La Cuerda / Cifra Club)</label>
+          <div class="formhint" style="margin:2px 0 6px;">Pegá el <b>link</b> de la canción (La Cuerda o Cifra Club) y la app la trae y completa sola. Si no tenés el link, tocá "Buscar".</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-            <input type="url" id="fetchUrl" placeholder="https://acordes.lacuerda.net/artista/cancion" style="flex:1;min-width:180px;" spellcheck="false" autocomplete="off">
+            <input type="url" id="fetchUrl" placeholder="link de La Cuerda o Cifra Club" style="flex:1;min-width:180px;" spellcheck="false" autocomplete="off">
             <button type="button" id="fetchBtn">&#11015;&#65039; Traer</button>
             <button type="button" id="fetchSearchBtn" title="Buscar la canción en La Cuerda">&#128269; Buscar</button>
           </div>
@@ -2946,10 +2946,22 @@ async function lc_fetch(url){
   return null;
 }
 const fetchMsgEl = document.getElementById('fetchMsg');
+function lc_normalizeUrl(url){
+  // Cifra Club: la versión "imprimir.html" es HTML plano con los acordes
+  try{
+    const u = new URL(url);
+    if(/(^|\.)cifraclub\.com(\.br)?$/i.test(u.hostname)){
+      let path = u.pathname.replace(/\/+$/,'');
+      if(!/imprimir\.html$/i.test(path)) path = path + '/imprimir.html';
+      return u.origin + path;
+    }
+  }catch(e){}
+  return url;
+}
 async function lc_importFromUrl(url){
   if(!/^https?:\/\//i.test(url)){ fetchMsgEl.textContent = 'Pegá un link que empiece con http:// o https://'; return; }
   fetchMsgEl.textContent = 'Trayendo la canción…';
-  const html = await lc_fetch(url);
+  const html = await lc_fetch(lc_normalizeUrl(url));
   if(!html){ fetchMsgEl.innerHTML = 'No se pudo traer (el intermediario puede estar caído o el sitio bloqueó la lectura). Abrí el link, copiá el texto y pegalo abajo.'; return; }
   const {sheet, title} = lc_extractSheet(html);
   if(!sheet || sheet.trim().length < 20){ fetchMsgEl.textContent = 'Traje la página pero no reconocí los acordes. Copiá el texto y pegalo abajo.'; return; }
@@ -2965,17 +2977,18 @@ document.getElementById('fetchBtn').addEventListener('click', async ()=>{
   catch(e){ fetchMsgEl.textContent = 'Error al traer: ' + (e.message || e); }
   finally{ btn.disabled = false; }
 });
+const LC_OKRE = /^https?:\/\/((acordes|chords)\.lacuerda\.net|(www\.)?cifraclub\.com(\.br)?)\/[^\/]+\/[^\/?#]+/i;
 async function lc_search(q){
-  const html = await lc_fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent('site:lacuerda.net ' + q + ' acordes'));
+  const html = await lc_fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(q + ' acordes cifra'));
   if(!html) return null;
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const out = [], seen = {};
   doc.querySelectorAll('a').forEach(a=>{
     let href = a.getAttribute('href') || '';
     const m = href.match(/[?&]uddg=([^&]+)/); if(m){ try{ href = decodeURIComponent(m[1]); }catch(e){} }
-    if(/^https?:\/\/(acordes|chords)\.lacuerda\.net\/[^\/]+\/[^\/?#]+/.test(href)){
-      const clean = href.split('#')[0];
-      if(!seen[clean]){ seen[clean] = 1; out.push({url: clean, title: (a.textContent || '').replace(/\s+/g,' ').trim()}); }
+    if(LC_OKRE.test(href)){
+      let clean = href.split('#')[0].split('?')[0].replace(/\/imprimir\.html$/i,'/');
+      if(!seen[clean]){ seen[clean] = 1; out.push({url: clean, title: (a.textContent || '').replace(/\s+/g,' ').trim(), site: /cifraclub/i.test(clean) ? 'Cifra Club' : 'La Cuerda'}); }
     }
   });
   return out;
@@ -2989,7 +3002,7 @@ document.getElementById('fetchSearchBtn').addEventListener('click', async ()=>{
     const results = await lc_search(q);
     if(results && results.length){
       let h = 'Elegí la versión (tocá para traerla):<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">';
-      results.slice(0,8).forEach(r=>{ h += '<button type="button" class="smallbtn lc-res" data-url="' + encodeURIComponent(r.url) + '" style="text-align:left;">' + (r.title || r.url).replace(/</g,'&lt;') + '</button>'; });
+      results.slice(0,10).forEach(r=>{ h += '<button type="button" class="smallbtn lc-res" data-url="' + encodeURIComponent(r.url) + '" style="text-align:left;"><b>' + (r.site||'') + ':</b> ' + (r.title || r.url).replace(/</g,'&lt;') + '</button>'; });
       fetchMsgEl.innerHTML = h + '</div>';
     } else {
       const g = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net');
