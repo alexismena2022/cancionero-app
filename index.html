@@ -652,6 +652,15 @@ create policy "allow all" on cancionero_kv for all using (true) with check (true
       <div id="addToggle"><span id="addFormTitle">&#10133; Agregar canción nueva</span> <span id="addToggleArrow">&#9660;</span></div>
       <div id="addForm">
         <div id="pasteBox">
+          <label for="fetchUrl">&#128279; Traer de la web (La Cuerda)</label>
+          <div class="formhint" style="margin:2px 0 6px;">Pegá el <b>link</b> de la canción en La Cuerda y la app la trae y completa sola. Si no tenés el link, tocá "Buscar".</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+            <input type="url" id="fetchUrl" placeholder="https://acordes.lacuerda.net/artista/cancion" style="flex:1;min-width:180px;" spellcheck="false" autocomplete="off">
+            <button type="button" id="fetchBtn">&#11015;&#65039; Traer</button>
+            <button type="button" id="fetchSearchBtn" title="Buscar la canción en La Cuerda">&#128269; Buscar</button>
+          </div>
+          <div id="fetchMsg" class="formhint" style="margin:6px 0 0;"></div>
+          <div class="formhint" style="margin:10px 0 2px;text-align:center;">&mdash; o pegá el texto &mdash;</div>
           <label for="pasteText">&#128203; Pegar una canción (opcional)</label>
           <div class="formhint" style="margin:2px 0 6px;">Copiá la hoja desde La Cuerda, Cifra Club o donde la tengas y pegala acá. La app arma sola el título, el tono, las secciones y los acordes de bajo. Después revisás los campos de abajo y guardás.</div>
           <textarea id="pasteText" rows="7" placeholder="Pegá acá el texto de la canción…" spellcheck="false" autocomplete="off"></textarea>
@@ -2901,8 +2910,65 @@ document.getElementById('pasteConvertBtn').addEventListener('click', ()=>{
   document.getElementById('f_title').value = r.title || prevTitle;
   fKey.value = r.key || 'RE';
   fSections.innerHTML = '';
-  r.sections.forEach(s=>addSectionRow(s.label, s.chords, s.lyric));
+  r.sections.forEach(s=>addSectionRow(s.label, transposeLine(s.chords, 0), s.lyric));
   pasteReport.scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+// ---------- traer una canción de la web (La Cuerda) por link ----------
+function lc_cleanTitle(t){
+  if(!t) return '';
+  t = t.replace(/\s*[-|–—•]\s*(acordes|tab|tabs|la\s*cuerda|cifra\s*club|chords|guitar).*$/i,'');
+  t = t.split(/\s[-|–—]\s/)[0];
+  return t.replace(/\s+/g,' ').trim();
+}
+function lc_extractSheet(html){
+  try{
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    let best = '';
+    doc.querySelectorAll('pre').forEach(p=>{ const t = p.textContent || ''; if(t.length > best.length) best = t; });
+    const title = lc_cleanTitle(doc.title || '');
+    if(best.trim().length > 40) return {sheet: best, title};
+    return {sheet: (doc.body ? doc.body.textContent : '') || '', title};
+  }catch(e){ return {sheet:'', title:''}; }
+}
+const LC_PROXIES = [
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://thingproxy.freeboard.io/fetch/' + u
+];
+async function lc_fetch(url){
+  for(const mk of LC_PROXIES){
+    try{
+      const res = await fetch(mk(url), {redirect:'follow'});
+      if(res && res.ok){ const t = await res.text(); if(t && t.length > 200) return t; }
+    }catch(e){}
+  }
+  return null;
+}
+const fetchMsgEl = document.getElementById('fetchMsg');
+document.getElementById('fetchBtn').addEventListener('click', async ()=>{
+  const url = document.getElementById('fetchUrl').value.trim();
+  if(!/^https?:\/\//i.test(url)){ fetchMsgEl.textContent = 'Pegá un link que empiece con http:// o https://'; return; }
+  const btn = document.getElementById('fetchBtn'); btn.disabled = true; fetchMsgEl.textContent = 'Trayendo la canción…';
+  try{
+    const html = await lc_fetch(url);
+    if(!html){ fetchMsgEl.innerHTML = 'No se pudo traer (el intermediario puede estar caído o el sitio bloqueó la lectura). Abrí el link, copiá el texto y pegalo abajo.'; return; }
+    const {sheet, title} = lc_extractSheet(html);
+    if(!sheet || sheet.trim().length < 20){ fetchMsgEl.textContent = 'Traje la página pero no reconocí los acordes. Copiá el texto y pegalo abajo.'; return; }
+    pasteText.value = sheet;
+    document.getElementById('pasteConvertBtn').click();
+    const tEl = document.getElementById('f_title');
+    if(title && !tEl.value.trim()) tEl.value = title;
+    fetchMsgEl.textContent = '¡Listo! Revisá el título, el tono y las secciones acá abajo, y guardá.';
+  }catch(e){ fetchMsgEl.textContent = 'Error al traer: ' + (e.message || e); }
+  finally{ btn.disabled = false; }
+});
+document.getElementById('fetchSearchBtn').addEventListener('click', ()=>{
+  let q = document.getElementById('f_title').value.trim();
+  if(!q) q = (prompt('¿Qué canción buscás en La Cuerda?') || '');
+  q = q.trim(); if(!q) return;
+  window.open('https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net'), '_blank');
+  fetchMsgEl.textContent = 'Buscá la canción, copiá el link de La Cuerda y pegalo arriba.';
 });
 
 // ---------- cuando la búsqueda no encuentra nada ----------
