@@ -2946,29 +2946,61 @@ async function lc_fetch(url){
   return null;
 }
 const fetchMsgEl = document.getElementById('fetchMsg');
-document.getElementById('fetchBtn').addEventListener('click', async ()=>{
-  const url = document.getElementById('fetchUrl').value.trim();
+async function lc_importFromUrl(url){
   if(!/^https?:\/\//i.test(url)){ fetchMsgEl.textContent = 'Pegá un link que empiece con http:// o https://'; return; }
-  const btn = document.getElementById('fetchBtn'); btn.disabled = true; fetchMsgEl.textContent = 'Trayendo la canción…';
-  try{
-    const html = await lc_fetch(url);
-    if(!html){ fetchMsgEl.innerHTML = 'No se pudo traer (el intermediario puede estar caído o el sitio bloqueó la lectura). Abrí el link, copiá el texto y pegalo abajo.'; return; }
-    const {sheet, title} = lc_extractSheet(html);
-    if(!sheet || sheet.trim().length < 20){ fetchMsgEl.textContent = 'Traje la página pero no reconocí los acordes. Copiá el texto y pegalo abajo.'; return; }
-    pasteText.value = sheet;
-    document.getElementById('pasteConvertBtn').click();
-    const tEl = document.getElementById('f_title');
-    if(title && !tEl.value.trim()) tEl.value = title;
-    fetchMsgEl.textContent = '¡Listo! Revisá el título, el tono y las secciones acá abajo, y guardá.';
-  }catch(e){ fetchMsgEl.textContent = 'Error al traer: ' + (e.message || e); }
+  fetchMsgEl.textContent = 'Trayendo la canción…';
+  const html = await lc_fetch(url);
+  if(!html){ fetchMsgEl.innerHTML = 'No se pudo traer (el intermediario puede estar caído o el sitio bloqueó la lectura). Abrí el link, copiá el texto y pegalo abajo.'; return; }
+  const {sheet, title} = lc_extractSheet(html);
+  if(!sheet || sheet.trim().length < 20){ fetchMsgEl.textContent = 'Traje la página pero no reconocí los acordes. Copiá el texto y pegalo abajo.'; return; }
+  pasteText.value = sheet;
+  document.getElementById('pasteConvertBtn').click();
+  const tEl = document.getElementById('f_title');
+  if(title && !tEl.value.trim()) tEl.value = title;
+  fetchMsgEl.textContent = '¡Listo! Revisá el título, el tono y las secciones acá abajo, y guardá.';
+}
+document.getElementById('fetchBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('fetchBtn'); btn.disabled = true;
+  try{ await lc_importFromUrl(document.getElementById('fetchUrl').value.trim()); }
+  catch(e){ fetchMsgEl.textContent = 'Error al traer: ' + (e.message || e); }
   finally{ btn.disabled = false; }
 });
-document.getElementById('fetchSearchBtn').addEventListener('click', ()=>{
+async function lc_search(q){
+  const html = await lc_fetch('https://html.duckduckgo.com/html/?q=' + encodeURIComponent('site:lacuerda.net ' + q + ' acordes'));
+  if(!html) return null;
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const out = [], seen = {};
+  doc.querySelectorAll('a').forEach(a=>{
+    let href = a.getAttribute('href') || '';
+    const m = href.match(/[?&]uddg=([^&]+)/); if(m){ try{ href = decodeURIComponent(m[1]); }catch(e){} }
+    if(/^https?:\/\/(acordes|chords)\.lacuerda\.net\/[^\/]+\/[^\/?#]+/.test(href)){
+      const clean = href.split('#')[0];
+      if(!seen[clean]){ seen[clean] = 1; out.push({url: clean, title: (a.textContent || '').replace(/\s+/g,' ').trim()}); }
+    }
+  });
+  return out;
+}
+document.getElementById('fetchSearchBtn').addEventListener('click', async ()=>{
   let q = document.getElementById('f_title').value.trim();
-  if(!q) q = (prompt('¿Qué canción buscás en La Cuerda?') || '');
-  q = q.trim(); if(!q) return;
-  window.open('https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net'), '_blank');
-  fetchMsgEl.textContent = 'Buscá la canción, copiá el link de La Cuerda y pegalo arriba.';
+  if(!q) q = (prompt('¿Qué canción buscás en La Cuerda? (podés poner artista + canción)') || '').trim();
+  if(!q) return;
+  const btn = document.getElementById('fetchSearchBtn'); btn.disabled = true; fetchMsgEl.textContent = 'Buscando en La Cuerda…';
+  try{
+    const results = await lc_search(q);
+    if(results && results.length){
+      let h = 'Elegí la versión (tocá para traerla):<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px;">';
+      results.slice(0,8).forEach(r=>{ h += '<button type="button" class="smallbtn lc-res" data-url="' + encodeURIComponent(r.url) + '" style="text-align:left;">' + (r.title || r.url).replace(/</g,'&lt;') + '</button>'; });
+      fetchMsgEl.innerHTML = h + '</div>';
+    } else {
+      const g = 'https://www.google.com/search?q=' + encodeURIComponent(q + ' acordes site:lacuerda.net');
+      fetchMsgEl.innerHTML = 'No pude buscar sola (el intermediario puede estar caído). <a href="' + g + '" target="_blank" rel="noopener">&#128269; Abrir búsqueda en Google</a> &mdash; abrí el resultado de La Cuerda, copiá el link y pegalo arriba.';
+    }
+  }catch(e){ fetchMsgEl.textContent = 'Error al buscar: ' + (e.message || e); }
+  finally{ btn.disabled = false; }
+});
+fetchMsgEl.addEventListener('click', (e)=>{
+  const r = e.target.closest('.lc-res');
+  if(r){ const u = decodeURIComponent(r.getAttribute('data-url')); document.getElementById('fetchUrl').value = u; lc_importFromUrl(u); }
 });
 
 // ---------- cuando la búsqueda no encuentra nada ----------
