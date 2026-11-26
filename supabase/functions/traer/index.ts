@@ -37,11 +37,20 @@ Deno.serve(async (req: Request) => {
       return new Response("Dominio no permitido: " + host, { status: 403, headers: CORS });
     }
 
+    // Headers de navegador real: algunos sitios (ej. Cifra Club / Akamai) rechazan
+    // pedidos que no parecen un navegador.
+    let referer = "/";
+    try { referer = new URL(target).origin + "/"; } catch { /* ignore */ }
     const upstream = await fetch(target, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; CancioneroBot/1.0)",
-        "Accept-Language": "es,es-419;q=0.9,en;q=0.8",
-        "Accept": "text/html,application/xhtml+xml",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Referer": referer,
       },
       redirect: "follow",
     });

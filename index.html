@@ -2982,6 +2982,10 @@ async function lc_importFromUrl(url){
   fetchMsgEl.textContent = 'Trayendo la canción…';
   const html = await lc_fetch(lc_normalizeUrl(url));
   if(!html){ fetchMsgEl.innerHTML = 'No se pudo traer (el intermediario puede estar caído o el sitio bloqueó la lectura). Abrí el link, copiá el texto y pegalo abajo.'; return; }
+  if(/access denied|edgesuite\.net|permission to access|you don't have permission/i.test(html.slice(0,3000))){
+    fetchMsgEl.innerHTML = 'Ese sitio (Cifra Club) bloqueó el pedido. Probá la versión de <b>La Cuerda</b> de esa canción, o abrí el link, copiá el texto y pegalo abajo.';
+    return;
+  }
   const {sheet, title} = lc_extractSheet(html);
   if(!sheet || sheet.trim().length < 20){ fetchMsgEl.textContent = 'Traje la página pero no reconocí los acordes. Copiá el texto y pegalo abajo.'; return; }
   pasteText.value = sheet;
