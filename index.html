@@ -586,7 +586,11 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
       </div>
     </div>
 
-    <h2>Todas las canciones (tildá para agregar)</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 0 4px;">
+      <h2 style="margin:0;">Canciones</h2>
+      <button type="button" id="toggleAllSongs" class="smallbtn">Ver todas</button>
+    </div>
+    <div id="songsHint" class="formhint" style="margin:4px 0 2px;">Escribí el nombre de una canción arriba (&#128269; Buscar canción) y tildala para agregarla a la vista previa. O tocá <b>&ldquo;Ver todas&rdquo;</b> para ver el listado completo.</div>
     <div id="list"></div>
     <div id="empty">No se encontró ninguna canción con ese nombre.
       <div id="emptyHelp" style="display:none;">
@@ -599,7 +603,7 @@ html.dark-theme .grado-btn:active .roman, html.dark-theme .grado-btn.playing .ro
       </div>
     </div>
 
-    <div id="listsSection">
+    <div id="listsSection" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border);">
       <h2>Listas para eventos</h2>
       <div class="hint">Armá tu cancionero tildando canciones arriba, ponele un nombre y guardalo acá. Después lo abrís con un toque, con los mismos tonos y el mismo orden.</div>
       <div id="listSaveBox">
@@ -1396,27 +1400,37 @@ function renderSongList(){
   attachSearchFilter();
 }
 
+let showAllSongs = false;
 function attachSearchFilter(){
   const songEls = Array.from(document.querySelectorAll('.song'));
   const q = norm(searchInput.value);
+  const hasQuery = searchInput.value.trim()!=='';
   let v=0;
   songEls.forEach(el=>{
     const inTitle = norm(el.getAttribute('data-title')).includes(q);
-    const inAny = q==='' || norm(el.getAttribute('data-search')).includes(q);
-    el.classList.toggle('hidden', !inAny);
+    const matches = norm(el.getAttribute('data-search')).includes(q);
+    // Sin búsqueda, la lista queda oculta (así "Listas" queda a mano arriba);
+    // se muestra al buscar, o si tocás "Ver todas".
+    const show = hasQuery ? matches : showAllSongs;
+    el.classList.toggle('hidden', !show);
     const badge = el.querySelector('.lyric-match-badge');
     if(badge) badge.remove();
-    if(inAny && q!=='' && !inTitle){
+    if(show && hasQuery && !inTitle){
       const span = document.createElement('span');
       span.className = 'lyric-match-badge';
       span.textContent = 'coincide en la letra';
       el.querySelector('.song-head').appendChild(span);
     }
-    if(inAny) v++;
+    if(show) v++;
   });
-  updateCount(v, songEls.length);
-  emptyEl.style.display = v===0 ? 'block':'none';
-  updateEmptyHelp(v===0 && searchInput.value.trim()!=='');
+  if(hasQuery || showAllSongs) updateCount(v, songEls.length); else countEl.textContent='';
+  // "no se encontró" solo cuando estás buscando y no hay resultados
+  emptyEl.style.display = (hasQuery && v===0) ? 'block':'none';
+  updateEmptyHelp(hasQuery && v===0);
+  const hint = document.getElementById('songsHint');
+  if(hint) hint.style.display = (!hasQuery && !showAllSongs) ? 'block' : 'none';
+  const tog = document.getElementById('toggleAllSongs');
+  if(tog){ tog.textContent = showAllSongs ? 'Ocultar' : 'Ver todas'; tog.style.display = hasQuery ? 'none' : ''; }
 }
 
 const searchInput = document.getElementById('search');
@@ -1425,6 +1439,10 @@ const emptyEl = document.getElementById('empty');
 function norm(s){return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
 function updateCount(v, total){countEl.textContent = v+' de '+total+' canciones';}
 searchInput.addEventListener('input', attachSearchFilter);
+document.getElementById('toggleAllSongs').addEventListener('click', ()=>{
+  showAllSongs = !showAllSongs;
+  attachSearchFilter();
+});
 
 // ---------- pestañas: Buscar / Herramientas ----------
 function showTab(target, focusSearch){
